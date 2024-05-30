@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace Hl7.Fhir.Model.SourceGeneration
 {
@@ -73,10 +74,15 @@ namespace Hl7.Fhir.Model.SourceGeneration
             return false;
         }
 
-        internal static void TraverseNamespace(this INamespaceSymbol ns, HashSet<INamedTypeSymbol> allTypes, List<(INamedTypeSymbol, AttributeData)> classMappings, List<(INamedTypeSymbol, AttributeData)> enumMappings)
+        internal static void TraverseNamespace(this INamespaceSymbol ns, HashSet<INamedTypeSymbol> allTypes, List<(INamedTypeSymbol, AttributeData)> classMappings, List<(INamedTypeSymbol, AttributeData)> enumMappings, CancellationToken cancellationToken)
         {
             foreach (var type in ns.GetTypeMembers())
             {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
                 if (!type.IsGenericType &&
                     type.CanBeReferencedByName &&
                     (type.IsClassMapping(out _) || type.IsEnumMapping(out _)))
@@ -110,7 +116,12 @@ namespace Hl7.Fhir.Model.SourceGeneration
 
             foreach (var childNamespace in ns.GetNamespaceMembers())
             {
-                TraverseNamespace(childNamespace, allTypes, classMappings, enumMappings);
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                TraverseNamespace(childNamespace, allTypes, classMappings, enumMappings, cancellationToken);
             }
         }
     }

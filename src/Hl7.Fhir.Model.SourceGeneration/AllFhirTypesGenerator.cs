@@ -51,13 +51,23 @@ public class AllFhirTypesGenerator : ISourceGenerator
         var classMappings = new List<(INamedTypeSymbol, AttributeData)>();
         var enumMappings = new List<(INamedTypeSymbol, AttributeData)>();
 
-        context.Compilation.GlobalNamespace.TraverseNamespace(fhirTypes, classMappings, enumMappings);
-        foreach (var asm in hl7Asms)
+        if (context.CancellationToken.IsCancellationRequested)
         {
-            asm.GlobalNamespace.TraverseNamespace(fhirTypes, classMappings, enumMappings);
+            return;
         }
 
-        if (receiver.MethodDeclarations.Count > 0)
+        context.Compilation.GlobalNamespace.TraverseNamespace(fhirTypes, classMappings, enumMappings, context.CancellationToken);
+        foreach (var asm in hl7Asms)
+        {
+            if (context.CancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            asm.GlobalNamespace.TraverseNamespace(fhirTypes, classMappings, enumMappings, context.CancellationToken);
+        }
+
+        if (fhirTypes.Count > 0)
         {
 #if CACHING
             var arrayTerminator = "]);";
@@ -94,6 +104,11 @@ public class AllFhirTypesGenerator : ISourceGenerator
                 code.AppendLine($"          typeof({fhirType.ToDisplayString()}),");
             }
 
+            if (context.CancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
             code.Append(
                 $$"""
                     {{arrayTerminator}}
@@ -104,6 +119,11 @@ public class AllFhirTypesGenerator : ISourceGenerator
 
             foreach (var fhirType in classMappings)
             {
+                if (context.CancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
                 if (fhirType.Item1.IsCqlType())
                 {
                     WriteCqlType(code, fhirType);
@@ -124,6 +144,11 @@ public class AllFhirTypesGenerator : ISourceGenerator
 
             foreach (var fhirType in enumMappings)
             {
+                if (context.CancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
                 WriteFhirEnumeration(code, fhirType);
             }
 
@@ -134,6 +159,12 @@ public class AllFhirTypesGenerator : ISourceGenerator
             }
 
             """);
+
+            if (context.CancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
             foreach (var item in receiver.MethodDeclarations)
             {
                 var methodSymbol = item.Method;
@@ -229,4 +260,5 @@ public class AllFhirTypesGenerator : ISourceGenerator
             code.AppendLine($"          new Hl7.Fhir.Introspection.EnumMapping(\"{name}\", \"{valueset}\", typeof({enumType.ToDisplayString()}), FhirRelease, \"{system}\"),");
         }
     }
+
 }
