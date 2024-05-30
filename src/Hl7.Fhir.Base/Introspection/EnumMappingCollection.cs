@@ -26,7 +26,12 @@ namespace Hl7.Fhir.Introspection
 
         public EnumMappingCollection(IEnumerable<EnumMapping> mappings)
         {
-            _byName = new(mappings.Select(static x => new KeyValuePair<string, EnumMapping>(x.Name, x)), StringComparer.OrdinalIgnoreCase);
+#if DEBUG
+            // R4 has enums with the same name
+            var duplicateKeys = mappings.GroupBy(x => x.Name).Where(x => x.Count() > 1).ToList();
+            System.Diagnostics.Debug.WriteIf(duplicateKeys.Count == 0, $"Found duplicate keys ({string.Join(",", duplicateKeys.Select(x => x.Key))})");
+#endif
+            _byName = new(mappings.GroupBy(static x => x.Name).Select(static x => new KeyValuePair<string, EnumMapping>(x.Key, x.Last())), StringComparer.OrdinalIgnoreCase);
             _byType = new(mappings.Select(static x => new KeyValuePair<Type, EnumMapping>(x.NativeType, x)));
             _byCanonical = new(mappings.Where(static x => x.Canonical is not null).Select(static x => new KeyValuePair<string, EnumMapping>(x.Canonical!, x)));
         }
