@@ -118,6 +118,36 @@ namespace Hl7.Fhir.Introspection
         /// <typeparam name="T"></typeparam>
         public static ModelInspector ForType<T>() where T : Resource => ForType(typeof(T));
 
+        public ModelInspector(IEnumerable<ClassMapping> classMappings, IEnumerable<EnumMapping> enumMappings)
+        {
+            _classMappings = new ClassMappingCollection(classMappings);
+            _enumMappings = new EnumMappingCollection(enumMappings);
+        }
+
+        public static ModelInspector ForTypes(string version, ReadOnlySpan<Type> types)
+        {
+            var fhirRelease = FhirReleaseParser.Parse(version);
+            var classMappings = new List<ClassMapping>(types.Length);
+            var enumMappings = new List<EnumMapping>(types.Length);
+            foreach (var type in types)
+            {
+                if (!type.IsEnum && ClassMapping.TryCreate(type, out var classMapping, fhirRelease))
+                {
+                    classMappings.Add(classMapping);
+                }
+                else if (type.IsEnum && EnumMapping.TryCreate(type, out var enumMapping, fhirRelease))
+                {
+                    enumMappings.Add(enumMapping);
+                }
+            }
+
+            return new ModelInspector(classMappings, enumMappings)
+            {
+                FhirRelease = fhirRelease,
+                FhirVersion = version,
+            };
+        }
+
         /// <summary>
         /// Returns a fully configured <see cref="ModelInspector"/> with the
         /// FHIR metadata contents of the base assembly
@@ -144,7 +174,7 @@ namespace Hl7.Fhir.Introspection
         /// </summary>
         /// <remarks>This is taken from the ModelInfo.Version string when the ModelInspector
         /// reflects on a satellite assembly.</remarks>
-        public string? FhirVersion { get; private set; }
+        public string? FhirVersion { get; internal set; }
 
         private readonly EnumMappingCollection _enumMappings = new();
 
@@ -351,6 +381,7 @@ namespace Hl7.Fhir.Introspection
         public bool IsReference(Type type) => type.CanBeTreatedAsType(typeof(ResourceReference));
 
         public string? GetFhirTypeNameForType(Type type) => FindClassMapping(type) is { } mapping ? mapping.Name : null;
+
 
         #endregion
     }

@@ -106,7 +106,7 @@ namespace Hl7.Fhir.Introspection
             return true;
         }
 
-        private ClassMapping(string name, Type nativeType, FhirRelease release)
+        internal ClassMapping(string name, Type nativeType, FhirRelease release)
         {
             Name = name;
             NativeType = nativeType;
@@ -138,29 +138,29 @@ namespace Hl7.Fhir.Introspection
         /// <summary>
         /// The .NET class that implements the FHIR datatype/resource
         /// </summary>
-        public Type NativeType { get; private set; }
+        public Type NativeType { get; internal set; }
 
         /// <summary>
         /// Is <c>true</c> when this class represents a Resource datatype.
         /// </summary>
-        public bool IsResource { get; private set; } = false;
+        public bool IsResource { get; internal set; } = false;
 
         /// <summary>
         /// Is <c>true</c> when this class represents a FHIR primitive
         /// </summary>
         /// <remarks>This is different from a .NET primitive, as FHIR primitives are complex types with a primitive value.</remarks>
-        public bool IsFhirPrimitive { get; private set; } = false;
+        public bool IsFhirPrimitive { get; internal set; } = false;
 
         /// <summary>
         /// The element is of an atomic .NET type, not a FHIR generated POCO.
         /// </summary>
-        public bool IsPrimitive { get; private set; } = false;
+        public bool IsPrimitive { get; internal set; } = false;
 
         /// <summary>
         /// Is <c>true</c> when this class represents a code with a required binding.
         /// </summary>
         /// <remarks>See <see cref="Name"></see>.</remarks>
-        public bool IsCodeOfT { get; private set; } = false;
+        public bool IsCodeOfT { get; internal set; } = false;
 
         /// <summary>
         /// Indicates whether this class represents the nested complex type for a backbone element.
@@ -171,25 +171,25 @@ namespace Hl7.Fhir.Introspection
         /// <summary>
         /// Indicates whether this class represents the nested complex type for a backbone element.
         /// </summary>
-        public bool IsBackboneType { get; private set; } = false;
+        public bool IsBackboneType { get; internal set; } = false;
 
 
         /// <summary>
         /// If this is a backbone type (<see cref="IsBackboneType"/>), then this contains the path
         /// in the StructureDefinition where the backbone was defined first.
         /// </summary>
-        public string? DefinitionPath { get; private set; }
+        public string? DefinitionPath { get; internal set; }
 
         /// <summary>
         /// Indicates whether this class can be used for binding.
         /// </summary>
-        public bool IsBindable { get; private set; }
+        public bool IsBindable { get; internal set; }
 
         /// <summary>
         /// The canonical for the StructureDefinition defining this type
         /// </summary>
         /// <remarks>Will be null for backbone types.</remarks>
-        public string? Canonical { get; private set; }
+        public string? Canonical { get; internal set; }
 
         // This list is created lazily. This not only improves initial startup time of 
         // applications but also ensures circular references between types will not cause loops.
@@ -212,7 +212,7 @@ namespace Hl7.Fhir.Introspection
         /// The collection of zero or more <see cref="ValidationAttribute"/> (or subclasses) declared
         /// on this class.
         /// </summary>
-        public ValidationAttribute[] ValidationAttributes { get; private set; } = Array.Empty<ValidationAttribute>();
+        public ValidationAttribute[] ValidationAttributes { get; internal set; } = Array.Empty<ValidationAttribute>();
 
         /// <summary>
         /// Holds a reference to a property that represents the value of a FHIR Primitive. This

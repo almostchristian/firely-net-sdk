@@ -15,6 +15,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Hl7.Fhir.Conformance\Hl7.Fhir.Conformance.csproj" />
+	    <ProjectReference Include="..\Hl7.Fhir.Model.SourceGeneration\Hl7.Fhir.Model.SourceGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 	</ItemGroup>
 	
 </Project>

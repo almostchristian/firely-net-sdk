@@ -259,19 +259,7 @@ namespace Hl7.Fhir.Model
         /// Gets the <see cref="ModelInspector"/> providing metadata for the resources and
         /// datatypes in this release of FHIR.
         /// </summary>
-        public static ModelInspector ModelInspector
-        {
-            get
-            {
-                var inspector = ModelInspector.ForAssembly(typeof(ModelInfo).GetTypeInfo().Assembly);
-                if (inspector.FhirRelease != Specification.FhirRelease.STU3)
-                {
-                    // In case of release 4 or higher, also load the assembly with common conformance resources, like StructureDefinition
-                    inspector.Import(typeof(StructureDefinition).GetTypeInfo().Assembly);
-                }
-                return inspector;
-            }
-        }
+        public static ModelInspector ModelInspector => cachedModelInspector.Value;
     }
 
     public static class ModelInfoExtensions

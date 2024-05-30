@@ -11,6 +11,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Hl7.Fhir.Introspection
 {
@@ -18,12 +19,16 @@ namespace Hl7.Fhir.Introspection
     {
         public EnumMappingCollection()
         {
-            // Nothing
+            _byName = new(StringComparer.OrdinalIgnoreCase);
+            _byType = new();
+            _byCanonical = new();
         }
 
         public EnumMappingCollection(IEnumerable<EnumMapping> mappings)
         {
-            AddRange(mappings);
+            _byName = new(mappings.Select(static x => new KeyValuePair<string, EnumMapping>(x.Name, x)), StringComparer.OrdinalIgnoreCase);
+            _byType = new(mappings.Select(static x => new KeyValuePair<Type, EnumMapping>(x.NativeType, x)));
+            _byCanonical = new(mappings.Where(static x => x.Canonical is not null).Select(static x => new KeyValuePair<string, EnumMapping>(x.Canonical!, x)));
         }
 
         /// <summary>
@@ -54,19 +59,19 @@ namespace Hl7.Fhir.Introspection
         /// List of the enumerations, keyed by name.
         /// </summary>
         public IReadOnlyDictionary<string, EnumMapping> ByName => _byName;
-        private readonly ConcurrentDictionary<string, EnumMapping> _byName = new(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, EnumMapping> _byName;
 
         /// <summary>
         /// List of the enums, keyed by canonical.
         /// </summary>
         public IReadOnlyDictionary<string, EnumMapping> ByCanonical => _byCanonical;
-        private readonly ConcurrentDictionary<string, EnumMapping> _byCanonical = new();
+        private readonly ConcurrentDictionary<string, EnumMapping> _byCanonical;
 
         /// <summary>
         /// List of the enums, keyed by canonical.
         /// </summary>
         public IReadOnlyDictionary<Type, EnumMapping> ByType => _byType;
-        public readonly ConcurrentDictionary<Type, EnumMapping> _byType = new();
+        public readonly ConcurrentDictionary<Type, EnumMapping> _byType;
     }
 }
 
