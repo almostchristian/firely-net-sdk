@@ -118,10 +118,12 @@ namespace Hl7.Fhir.Introspection
         /// <typeparam name="T"></typeparam>
         public static ModelInspector ForType<T>() where T : Resource => ForType(typeof(T));
 
-        public ModelInspector(IEnumerable<ClassMapping> classMappings, IEnumerable<EnumMapping> enumMappings)
+        public ModelInspector(string fhirVersion, IEnumerable<ClassMapping> classMappings, IEnumerable<EnumMapping> enumMappings)
         {
             _classMappings = new ClassMappingCollection(classMappings);
             _enumMappings = new EnumMappingCollection(enumMappings);
+            FhirVersion = fhirVersion;
+            FhirRelease = FhirReleaseParser.Parse(fhirVersion);
         }
 
         public static ModelInspector ForTypes(string version, ReadOnlySpan<Type> types)
@@ -141,11 +143,7 @@ namespace Hl7.Fhir.Introspection
                 }
             }
 
-            return new ModelInspector(classMappings, enumMappings)
-            {
-                FhirRelease = fhirRelease,
-                FhirVersion = version,
-            };
+            return new ModelInspector(version, classMappings, enumMappings);
         }
 
         /// <summary>

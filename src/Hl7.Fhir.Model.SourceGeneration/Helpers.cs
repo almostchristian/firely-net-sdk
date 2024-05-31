@@ -74,7 +74,7 @@ namespace Hl7.Fhir.Model.SourceGeneration
             return false;
         }
 
-        internal static void TraverseNamespace(this INamespaceSymbol ns, HashSet<INamedTypeSymbol> allTypes, List<(INamedTypeSymbol, AttributeData)> classMappings, List<(INamedTypeSymbol, AttributeData)> enumMappings, CancellationToken cancellationToken)
+        internal static void TraverseNamespace(this INamespaceSymbol ns, HashSet<INamedTypeSymbol> allTypes, CancellationToken cancellationToken)
         {
             foreach (var type in ns.GetTypeMembers())
             {
@@ -87,30 +87,12 @@ namespace Hl7.Fhir.Model.SourceGeneration
                     type.CanBeReferencedByName &&
                     (type.IsClassMapping(out _) || type.IsEnumMapping(out _)))
                 {
-                    if (allTypes.Add(type))
-                    {
-                        if (type.IsClassMapping(out var typeData))
-                        {
-                            classMappings.Add((type, typeData));
-                        }
-                        else if (type.IsEnumMapping(out var enumData))
-                        {
-                            enumMappings.Add((type, enumData));
-                        }
+                    allTypes.Add(type);
+                }
 
-                        foreach (var nestedType in type.GetTypeMembers().Where(x => x.IsClassMapping(out _) || x.IsEnumMapping(out _)))
-                        {
-                            allTypes.Add(nestedType);
-                            if (nestedType.IsClassMapping(out var typeData2))
-                            {
-                                classMappings.Add((nestedType, typeData2));
-                            }
-                            else if (nestedType.IsEnumMapping(out var enumData2))
-                            {
-                                enumMappings.Add((nestedType, enumData2));
-                            }
-                        }
-                    }
+                foreach (var nestedType in type.GetTypeMembers().Where(static x => x.IsClassMapping(out _) || x.IsEnumMapping(out _)))
+                {
+                    allTypes.Add(nestedType);
                 }
             }
 
@@ -121,7 +103,44 @@ namespace Hl7.Fhir.Model.SourceGeneration
                     return;
                 }
 
-                TraverseNamespace(childNamespace, allTypes, classMappings, enumMappings, cancellationToken);
+                TraverseNamespace(childNamespace, allTypes, cancellationToken);
+            }
+        }
+
+        internal static void PopulateMappings(IEnumerable<INamedTypeSymbol> allTypes, List<KeyValuePair<INamedTypeSymbol, AttributeData>> classMappings, List<KeyValuePair<INamedTypeSymbol, AttributeData>> enumMappings)
+        {
+            foreach (var type in allTypes)
+            {
+                if (classMappings.Any(ex => ex.Key.Equals(type, SymbolEqualityComparer.Default)) || enumMappings.Any(ex => ex.Key.Equals(type, SymbolEqualityComparer.Default)))
+                {
+                    continue;
+                }
+
+                if (type.IsClassMapping(out var typeData))
+                {
+                    classMappings.Add(new(type, typeData));
+                }
+                else if (type.IsEnumMapping(out var enumData))
+                {
+                    enumMappings.Add(new(type, enumData));
+                }
+
+                foreach (var nestedType in type.GetTypeMembers().Where(static x => x.IsClassMapping(out _) || x.IsEnumMapping(out _)))
+                {
+                    if (classMappings.Any(ex => ex.Key.Equals(nestedType, SymbolEqualityComparer.Default)) || enumMappings.Any(ex => ex.Key.Equals(nestedType, SymbolEqualityComparer.Default)))
+                    {
+                        continue;
+                    }
+
+                    if (nestedType.IsClassMapping(out var typeData2))
+                    {
+                        classMappings.Add(new(nestedType, typeData2));
+                    }
+                    else if (nestedType.IsEnumMapping(out var enumData2))
+                    {
+                        enumMappings.Add(new(nestedType, enumData2));
+                    }
+                }
             }
         }
     }

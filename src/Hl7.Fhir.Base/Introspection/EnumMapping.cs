@@ -60,6 +60,9 @@ namespace Hl7.Fhir.Introspection
             return true;
         }
 
+        public static EnumMapping Build(string name, string? canonical, Type nativeType, FhirRelease release, string? defaultCodeSystem = null)
+            => new EnumMapping(name, canonical, nativeType, release, defaultCodeSystem);
+
         internal EnumMapping(string name, string? canonical, Type nativeType, FhirRelease release, string? defaultCodeSystem)
         {
             Name = name;

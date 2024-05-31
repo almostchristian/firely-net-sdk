@@ -259,7 +259,11 @@ namespace Hl7.Fhir.Model
         /// Gets the <see cref="ModelInspector"/> providing metadata for the resources and
         /// datatypes in this release of FHIR.
         /// </summary>
-        public static ModelInspector ModelInspector => cachedModelInspector.Value;
+        public static ModelInspector ModelInspector => GeneratedModelInspector();
+
+
+        [GenerateModelInspector(true, typeof(FhirString), typeof(CapabilityStatement), typeof(Patient))]
+        internal static partial ModelInspector GeneratedModelInspector();
     }
 
     public static class ModelInfoExtensions

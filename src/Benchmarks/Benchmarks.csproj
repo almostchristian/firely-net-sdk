@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
@@ -6,6 +6,8 @@
 		<AssemblyName>Benchmarks</AssemblyName>
 		<RootNamespace>Firely.Sdk.Benchmarks</RootNamespace>
 		<IsPackable>false</IsPackable>
+	   <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+	   <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\GeneratedFiles</CompilerGeneratedFilesOutputPath>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -13,6 +15,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\Hl7.Fhir.Model.SourceGeneration\Hl7.Fhir.Model.SourceGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 		<ProjectReference Include="..\Hl7.Fhir.R5\Hl7.Fhir.R5.csproj" />
 		<ProjectReference Include="..\Hl7.Fhir.Specification.Data.R5\Hl7.Fhir.Specification.Data.R5.csproj" />
 	</ItemGroup>

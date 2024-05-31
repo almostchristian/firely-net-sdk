@@ -106,11 +106,45 @@ namespace Hl7.Fhir.Introspection
             return true;
         }
 
-        internal ClassMapping(string name, Type nativeType, FhirRelease release)
+        public static ClassMapping Build(
+            string name,
+            Type nativeType,
+            FhirRelease release,
+            bool isResource = false,
+            bool isCodeOfT = false,
+            bool isFhirPrimitive = false,
+            bool isBackboneType = false,
+            string? definitionPath = null,
+            bool isBindable = false,
+            string? canonical = null,
+            ValidationAttribute[]? validationAttributes = null,
+            Func<PropertyMapping[]>? propertyMapFactory = null)
+        {
+            Func<PropertyMappingCollection>? propMappingFactory = null;
+            if (propertyMapFactory != null)
+            {
+                propMappingFactory = () => new PropertyMappingCollection(propertyMapFactory());
+            }
+
+            return new ClassMapping(name, nativeType, release, propMappingFactory)
+            {
+                IsResource = isResource,
+                IsCodeOfT = isCodeOfT,
+                IsFhirPrimitive = isFhirPrimitive,
+                IsBackboneType = isBackboneType,
+                DefinitionPath = definitionPath,
+                IsBindable = isBindable,
+                Canonical = canonical,
+                ValidationAttributes = validationAttributes ?? [],
+            };
+        }
+
+        private ClassMapping(string name, Type nativeType, FhirRelease release, Func<PropertyMappingCollection>? propertyMappngFactory = null)
         {
             Name = name;
             NativeType = nativeType;
             Release = release;
+            _propertyMappingFactory = propertyMappngFactory ?? inspectProperties;
         }
 
         /// <summary>
@@ -138,29 +172,29 @@ namespace Hl7.Fhir.Introspection
         /// <summary>
         /// The .NET class that implements the FHIR datatype/resource
         /// </summary>
-        public Type NativeType { get; internal set; }
+        public Type NativeType { get; private set; }
 
         /// <summary>
         /// Is <c>true</c> when this class represents a Resource datatype.
         /// </summary>
-        public bool IsResource { get; internal set; } = false;
+        public bool IsResource { get; private set; } = false;
 
         /// <summary>
         /// Is <c>true</c> when this class represents a FHIR primitive
         /// </summary>
         /// <remarks>This is different from a .NET primitive, as FHIR primitives are complex types with a primitive value.</remarks>
-        public bool IsFhirPrimitive { get; internal set; } = false;
+        public bool IsFhirPrimitive { get; private set; } = false;
 
         /// <summary>
         /// The element is of an atomic .NET type, not a FHIR generated POCO.
         /// </summary>
-        public bool IsPrimitive { get; internal set; } = false;
+        public bool IsPrimitive { get; private set; } = false;
 
         /// <summary>
         /// Is <c>true</c> when this class represents a code with a required binding.
         /// </summary>
         /// <remarks>See <see cref="Name"></see>.</remarks>
-        public bool IsCodeOfT { get; internal set; } = false;
+        public bool IsCodeOfT { get; private set; } = false;
 
         /// <summary>
         /// Indicates whether this class represents the nested complex type for a backbone element.
@@ -171,34 +205,36 @@ namespace Hl7.Fhir.Introspection
         /// <summary>
         /// Indicates whether this class represents the nested complex type for a backbone element.
         /// </summary>
-        public bool IsBackboneType { get; internal set; } = false;
+        public bool IsBackboneType { get; private set; } = false;
 
 
         /// <summary>
         /// If this is a backbone type (<see cref="IsBackboneType"/>), then this contains the path
         /// in the StructureDefinition where the backbone was defined first.
         /// </summary>
-        public string? DefinitionPath { get; internal set; }
+        public string? DefinitionPath { get; private set; }
 
         /// <summary>
         /// Indicates whether this class can be used for binding.
         /// </summary>
-        public bool IsBindable { get; internal set; }
+        public bool IsBindable { get; private set; }
 
         /// <summary>
         /// The canonical for the StructureDefinition defining this type
         /// </summary>
         /// <remarks>Will be null for backbone types.</remarks>
-        public string? Canonical { get; internal set; }
+        public string? Canonical { get; private set; }
 
         // This list is created lazily. This not only improves initial startup time of 
         // applications but also ensures circular references between types will not cause loops.
         private PropertyMappingCollection? _mappings;
+        private readonly Func<PropertyMappingCollection> _propertyMappingFactory;
+
         private PropertyMappingCollection propertyMappings
         {
             get
             {
-                LazyInitializer.EnsureInitialized(ref _mappings, inspectProperties);
+                LazyInitializer.EnsureInitialized(ref _mappings, _propertyMappingFactory);
                 return _mappings!;
             }
         }
@@ -212,7 +248,7 @@ namespace Hl7.Fhir.Introspection
         /// The collection of zero or more <see cref="ValidationAttribute"/> (or subclasses) declared
         /// on this class.
         /// </summary>
-        public ValidationAttribute[] ValidationAttributes { get; internal set; } = Array.Empty<ValidationAttribute>();
+        public ValidationAttribute[] ValidationAttributes { get; private set; } = Array.Empty<ValidationAttribute>();
 
         /// <summary>
         /// Holds a reference to a property that represents the value of a FHIR Primitive. This

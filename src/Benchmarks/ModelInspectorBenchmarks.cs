@@ -8,30 +8,52 @@ using System.Linq;
 namespace Firely.Sdk.Benchmarks;
 
 [MemoryDiagnoser]
-public class ModelInspectorBenchmarks
+public partial class ModelInspectorBenchmarks
 {
+    [GenerateModelInspector(false, typeof(CapabilityStatement), typeof(Appointment), typeof(OperationDefinition))]
+    public static partial Type[] Types4Resources();
+
+    [GenerateModelInspector(false, typeof(CapabilityStatement), typeof(Appointment), typeof(OperationDefinition))]
+    public static partial ClassMapping[] ClassMappings4Resources();
+
+    [GenerateModelInspector(false, typeof(CapabilityStatement), typeof(Appointment), typeof(OperationDefinition))]
+    public static partial EnumMapping[] EnumMappings4Resources();
+
+    [GenerateModelInspector(true, typeof(FhirString), typeof(CapabilityStatement), typeof(Patient))]
+    public static partial Type[] TypesAllResources();
+
+    [GenerateModelInspector]
+    public static partial EnumMapping[] EnumMappingsAllResources();
+
+    [GenerateModelInspector]
+    public static partial ClassMapping[] ClassMappingsAllResources();
+
+
     [GlobalSetup]
     public void BenchmarkSetup()
     {
         //  PropertyInfoExtensions.NoCodeGenSupport = true;
 
         var inspector = ScanAssemblies();
-        Console.WriteLine($"ScanAssemblies: Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
+        Console.WriteLine($"ScanAssemblies:                Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
 
         inspector = ImportTypeAllResources();
-        Console.WriteLine($"ImportTypeAllResources: Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
+        Console.WriteLine($"ImportTypeAllResources:        Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
 
-        inspector = NewWithSourceGenMappings();
-        Console.WriteLine($"NewWithSourceGenMappings: Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
+        inspector = NewWithSourceGenMappingsAllResources();
+        Console.WriteLine($"SourceGenMappingsAllResources: Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
 
         inspector = NewWithTypesAllResources();
-        Console.WriteLine($"NewWithTypesAllResources: Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
+        Console.WriteLine($"NewWithTypesAllResources:      Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
+
+        inspector = NewWithSourceGenMappings4Resources();
+        Console.WriteLine($"SourceGenMappings4Resources:   Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
 
         inspector = ImportType4Resources();
-        Console.WriteLine($"ImportType4Resources: Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
+        Console.WriteLine($"ImportType4Resources:          Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
 
         inspector = NewWithTypes4Resources();
-        Console.WriteLine($"NewWithTypes4Resources: Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
+        Console.WriteLine($"NewWithTypes4Resources:        Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
     }
 
     internal static readonly Type[] PopularResources = new Type[]
@@ -70,7 +92,7 @@ public class ModelInspectorBenchmarks
     {
         ResetCache();
         var inspector = new ModelInspector(Hl7.Fhir.Specification.FhirRelease.R5);
-        foreach (var t in ModelInfo.GenerateAllFhirTypes())
+        foreach (var t in TypesAllResources())
         {
             inspector.ImportType(t);
         }
@@ -92,11 +114,17 @@ public class ModelInspectorBenchmarks
     }
 
     [Benchmark]
-    public ModelInspector NewWithSourceGenMappings()
+    public ModelInspector NewWithSourceGenMappingsAllResources()
     {
-        FhirReleaseParser.Parse(ModelInfo.Version);
         ResetCache();
-        return new ModelInspector(ModelInfo.GenerateAllClassMappings(), ModelInfo.GenerateAllEnumMappings()) { FhirRelease = Hl7.Fhir.Specification.FhirRelease.R5 };
+        return new ModelInspector(ModelInfo.Version, ClassMappingsAllResources(), EnumMappingsAllResources());
+    }
+
+    [Benchmark]
+    public ModelInspector NewWithSourceGenMappings4Resources()
+    {
+        ResetCache();
+        return new ModelInspector(ModelInfo.Version, ClassMappings4Resources(), EnumMappings4Resources());
     }
 
     [Benchmark]
@@ -104,55 +132,14 @@ public class ModelInspectorBenchmarks
     {
         FhirReleaseParser.Parse(ModelInfo.Version);
         ResetCache();
-        return ModelInspector.ForTypes(ModelInfo.Version, ModelInfo.GenerateAllFhirTypes());
+        return ModelInspector.ForTypes(ModelInfo.Version, TypesAllResources());
     }
 
     [Benchmark]
     public ModelInspector NewWithTypes4Resources()
     {
         ResetCache();
-        var inspector = ModelInspector.ForTypes(ModelInfo.Version, [
-            typeof(CapabilityStatement),
-            typeof(CapabilityStatement.ConditionalDeleteStatus),
-            typeof(CapabilityStatement.ConditionalReadStatus),
-            typeof(CapabilityStatement.DocumentMode),
-            typeof(CapabilityStatement.EventCapabilityMode),
-            typeof(CapabilityStatement.ReferenceHandlingPolicy),
-            typeof(CapabilityStatement.ResourceVersionPolicy),
-            typeof(CapabilityStatement.RestfulCapabilityMode),
-            typeof(CapabilityStatement.SystemRestfulInteraction),
-            typeof(CapabilityStatement.TypeRestfulInteraction),
-            typeof(CapabilityStatement.DocumentComponent),
-            typeof(CapabilityStatement.EndpointComponent),
-            typeof(CapabilityStatement.ImplementationComponent),
-            typeof(CapabilityStatement.MessagingComponent),
-            typeof(CapabilityStatement.OperationComponent),
-            typeof(CapabilityStatement.ResourceComponent),
-            typeof(CapabilityStatement.ResourceInteractionComponent),
-            typeof(CapabilityStatement.RestComponent),
-            typeof(CapabilityStatement.SearchParamComponent),
-            typeof(CapabilityStatement.SecurityComponent),
-            typeof(CapabilityStatement.SoftwareComponent),
-            typeof(CapabilityStatement.SupportedMessageComponent),
-            typeof(CapabilityStatement.SystemInteractionComponent),
-            typeof(Appointment),
-            typeof(Appointment.AppointmentStatus),
-            typeof(Appointment.IANATimezones),
-            typeof(Appointment.ParticipationStatus),
-            typeof(Appointment.WeekOfMonth),
-            typeof(Appointment.MonthlyTemplateComponent),
-            typeof(Appointment.ParticipantComponent),
-            typeof(Appointment.RecurrenceTemplateComponent),
-            typeof(Appointment.WeeklyTemplateComponent),
-            typeof(Appointment.YearlyTemplateComponent),
-            typeof(OperationDefinition),
-            typeof(OperationDefinition.BindingComponent),
-            typeof(OperationDefinition.OperationKind),
-            typeof(OperationDefinition.OperationParameterScope),
-            typeof(OperationDefinition.OverloadComponent),
-            typeof(OperationDefinition.ParameterComponent),
-            typeof(OperationDefinition.ReferencedFromComponent),
-        ]);
+        var inspector = ModelInspector.ForTypes(ModelInfo.Version, Types4Resources());
         return inspector;
     }
 

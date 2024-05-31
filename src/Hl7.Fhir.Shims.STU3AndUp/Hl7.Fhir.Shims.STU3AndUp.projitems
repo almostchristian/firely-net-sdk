@@ -29,7 +29,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Serialization\JsonSerializationOptionsExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Serialization\PocoSerializationExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Serialization\FhirXmlPocoSerializer.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)sourcegeneration\ModelInfo..cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SourceGeneration\GenerateModelInspectorAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Specification\PocoStructureDefinitionSummaryProvider.cs" />
   </ItemGroup>
 </Project>

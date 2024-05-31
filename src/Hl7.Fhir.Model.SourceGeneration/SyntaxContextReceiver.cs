@@ -2,9 +2,10 @@
 // Copyright (c) Integrated Health Information Systems Pte Ltd. All rights reserved.
 // -------------------------------------------------------------------------------------------------
 
+//#define LAUNCH_DEBUGGER
+
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -14,8 +15,9 @@ namespace Hl7.Fhir.Model.SourceGeneration;
 internal sealed class SyntaxContextReceiver : ISyntaxContextReceiver
 {
     public const string GeneratedAllTypesAttributeName = "Hl7.Fhir.Model.GenerateAllFhirTypesAttribute";
+    public const string GenerateModelInspectorAttributeName = "Hl7.Fhir.Model.GenerateModelInspectorAttribute";
 
-    public HashSet<(ITypeSymbol Class, IMethodSymbol Method, IAssemblySymbol[] Assemblies)> MethodDeclarations { get; } = new();
+    public HashSet<(ITypeSymbol Class, IMethodSymbol Method, INamedTypeSymbol[] Types, bool ScanAll)> MethodDeclarations { get; } = new();
 
     internal static SyntaxContextReceiver Create()
     {
@@ -50,24 +52,34 @@ internal sealed class SyntaxContextReceiver : ISyntaxContextReceiver
         return false;
     }
 
-    private static (ITypeSymbol Class, IMethodSymbol Method, IAssemblySymbol[] Assemblies)? GetSemanticTargetForGeneration(IMethodSymbol methodSymbol)
+    private static (ITypeSymbol Class, IMethodSymbol Method, INamedTypeSymbol[] Types, bool ScanAll)? GetSemanticTargetForGeneration(IMethodSymbol methodSymbol)
     {
-        if (!methodSymbol.TryGetAttribute(GeneratedAllTypesAttributeName, out var attributeSyntax))
+        if (!methodSymbol.TryGetAttribute(GeneratedAllTypesAttributeName, out var attributeSyntax) &&
+            !methodSymbol.TryGetAttribute(GenerateModelInspectorAttributeName, out attributeSyntax))
         {
             return null;
         }
 
         var typeSymbol = methodSymbol.ContainingType;
 
-        var argval = attributeSyntax.NamedArguments.FirstOrDefault(x => x.Key == "AssembliesContainingTypes").Value;
-        var arg = !argval.IsNull ? argval.Values : [];
-        var assemblies = arg
+#if LAUNCH_DEBUGGER
+        System.Diagnostics.Debugger.Launch();
+#endif
+
+        var arg = attributeSyntax!.ConstructorArguments;
+
+        bool scanAllTypes = true;
+        if (arg.Length > 0 && arg[0].Kind != TypedConstantKind.Type)
+        {
+            bool.TryParse(arg[0].Value!.ToString(), out scanAllTypes);
+        }
+
+        var types = arg
             .Select(x => x.Value)
             .OfType<INamedTypeSymbol>()
-            .Select(e => e.ContainingAssembly)
             .Distinct(SymbolEqualityComparer.Default)
-            .OfType<IAssemblySymbol>()
+            .OfType<INamedTypeSymbol>()
             .ToArray();
-        return (typeSymbol, methodSymbol, assemblies);
+        return (typeSymbol, methodSymbol, types, scanAllTypes);
     }
 }
