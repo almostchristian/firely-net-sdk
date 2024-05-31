@@ -172,7 +172,7 @@ namespace Hl7.Fhir.Introspection
         /// </summary>
         /// <remarks>This is taken from the ModelInfo.Version string when the ModelInspector
         /// reflects on a satellite assembly.</remarks>
-        public string? FhirVersion { get; internal set; }
+        public string? FhirVersion { get; private set; }
 
         private readonly EnumMappingCollection _enumMappings = new();
 
@@ -379,7 +379,6 @@ namespace Hl7.Fhir.Introspection
         public bool IsReference(Type type) => type.CanBeTreatedAsType(typeof(ResourceReference));
 
         public string? GetFhirTypeNameForType(Type type) => FindClassMapping(type) is { } mapping ? mapping.Name : null;
-
 
         #endregion
     }
