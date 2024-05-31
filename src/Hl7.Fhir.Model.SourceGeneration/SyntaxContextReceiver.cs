@@ -1,8 +1,4 @@
-﻿// -------------------------------------------------------------------------------------------------
-// Copyright (c) Integrated Health Information Systems Pte Ltd. All rights reserved.
-// -------------------------------------------------------------------------------------------------
-
-//#define LAUNCH_DEBUGGER
+﻿//#define LAUNCH_DEBUGGER
 
 using System.Collections.Generic;
 using System.Linq;

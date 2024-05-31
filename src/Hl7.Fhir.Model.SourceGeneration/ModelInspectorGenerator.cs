@@ -176,10 +176,10 @@ public class ModelInspectorGenerator : ISourceGenerator
                     code.AppendLine($"        internal static System.Lazy<Hl7.Fhir.Introspection.ClassMapping[]> {methodSymbol.Name}ClassMappings = AllClassMappings;");
                     code.AppendLine($"        internal static System.Lazy<Hl7.Fhir.Introspection.EnumMapping[]> {methodSymbol.Name}EnumMappings = AllEnumMappings;");
 #else
-                    code.AppendLine($"        internal static Hl7.Fhir.Introspection.ModelInspector Get{methodSymbol.Name}ModelInspector = GetModelInspector;");
-                    code.AppendLine($"        internal static global::System.Type[] {methodSymbol.Name}Types = AllTypes;");
-                    code.AppendLine($"        internal static Hl7.Fhir.Introspection.ClassMapping[] {methodSymbol.Name}ClassMappings = AllClassMappings;");
-                    code.AppendLine($"        internal static Hl7.Fhir.Introspection.EnumMapping[] {methodSymbol.Name}EnumMappings = AllEnumMappings;");
+                    code.AppendLine($"        internal static Hl7.Fhir.Introspection.ModelInspector Get{methodSymbol.Name}ModelInspector() => GetModelInspector();");
+                    code.AppendLine($"        internal static global::System.Type[] {methodSymbol.Name}Types() => AllTypes();");
+                    code.AppendLine($"        internal static Hl7.Fhir.Introspection.ClassMapping[] {methodSymbol.Name}ClassMappings() => AllClassMappings();");
+                    code.AppendLine($"        internal static Hl7.Fhir.Introspection.EnumMapping[] {methodSymbol.Name}EnumMappings() => AllEnumMappings();");
 #endif
                 }
             }
