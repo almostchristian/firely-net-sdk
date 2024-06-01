@@ -1,5 +1,6 @@
 ﻿//#define LAUNCH_DEBUGGER
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
@@ -10,10 +11,9 @@ namespace Hl7.Fhir.Model.SourceGeneration;
 
 internal sealed class SyntaxContextReceiver : ISyntaxContextReceiver
 {
-    public const string GeneratedAllTypesAttributeName = "Hl7.Fhir.Model.GenerateAllFhirTypesAttribute";
     public const string GenerateModelInspectorAttributeName = "Hl7.Fhir.Model.GenerateModelInspectorAttribute";
 
-    public HashSet<(ITypeSymbol Class, IMethodSymbol Method, INamedTypeSymbol[] Types, bool ScanAll)> MethodDeclarations { get; } = new();
+    public HashSet<(ITypeSymbol Class, IMethodSymbol Method, INamedTypeSymbol[] Types, ModelInspectorGenerationTypeInclusionMode Mode)> MethodDeclarations { get; } = new();
 
     internal static SyntaxContextReceiver Create()
     {
@@ -48,10 +48,9 @@ internal sealed class SyntaxContextReceiver : ISyntaxContextReceiver
         return false;
     }
 
-    private static (ITypeSymbol Class, IMethodSymbol Method, INamedTypeSymbol[] Types, bool ScanAll)? GetSemanticTargetForGeneration(IMethodSymbol methodSymbol)
+    private static (ITypeSymbol Class, IMethodSymbol Method, INamedTypeSymbol[] Types, ModelInspectorGenerationTypeInclusionMode Mode)? GetSemanticTargetForGeneration(IMethodSymbol methodSymbol)
     {
-        if (!methodSymbol.TryGetAttribute(GeneratedAllTypesAttributeName, out var attributeSyntax) &&
-            !methodSymbol.TryGetAttribute(GenerateModelInspectorAttributeName, out attributeSyntax))
+        if (!methodSymbol.TryGetAttribute(GenerateModelInspectorAttributeName, out var attributeSyntax))
         {
             return null;
         }
@@ -64,10 +63,10 @@ internal sealed class SyntaxContextReceiver : ISyntaxContextReceiver
 
         var arg = attributeSyntax!.ConstructorArguments;
 
-        bool scanAllTypes = true;
+        ModelInspectorGenerationTypeInclusionMode mode = ModelInspectorGenerationTypeInclusionMode.Default;
         if (arg.Length > 0 && arg[0].Kind != TypedConstantKind.Type)
         {
-            bool.TryParse(arg[0].Value!.ToString(), out scanAllTypes);
+            Enum.TryParse(arg[0].Value!.ToString(), out mode);
         }
 
         var types = arg
@@ -76,6 +75,6 @@ internal sealed class SyntaxContextReceiver : ISyntaxContextReceiver
             .Distinct(SymbolEqualityComparer.Default)
             .OfType<INamedTypeSymbol>()
             .ToArray();
-        return (typeSymbol, methodSymbol, types, scanAllTypes);
+        return (typeSymbol, methodSymbol, types, mode);
     }
 }

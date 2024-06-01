@@ -6,74 +6,64 @@ namespace Hl7.Fhir.Model
     public sealed class GenerateModelInspectorAttribute : Attribute
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="GenerateAllFhirTypesAttribute"/> class.
+        /// Initializes a new instance of the <see cref="GenerateModelInspectorAttribute"/> class.
         /// </summary>
         public GenerateModelInspectorAttribute()
-            : this(true, [])
+            : this(ModelInspectorGenerationTypeInclusionMode.Default, [])
         {
         }
 
         public GenerateModelInspectorAttribute(Type type)
-            : this(true, [type])
+            : this(ModelInspectorGenerationTypeInclusionMode.Default, [type])
         {
         }
 
         public GenerateModelInspectorAttribute(Type type1, Type type2)
-            : this(true, [type1, type2])
+            : this(ModelInspectorGenerationTypeInclusionMode.Default, [type1, type2])
         {
         }
 
         public GenerateModelInspectorAttribute(Type type1, Type type2, Type type3)
-            : this(true, [type1, type2, type3])
+            : this(ModelInspectorGenerationTypeInclusionMode.Default, [type1, type2, type3])
         {
         }
 
         public GenerateModelInspectorAttribute(params Type[] assembliesContainingType)
-            : this(true, assembliesContainingType)
+            : this(ModelInspectorGenerationTypeInclusionMode.IncludeAllTypesInAssembly, assembliesContainingType)
         {
         }
 
-        public GenerateModelInspectorAttribute(bool scanAllTypes, Type type)
-            : this(scanAllTypes, [type])
+        public GenerateModelInspectorAttribute(ModelInspectorGenerationTypeInclusionMode typeInclusionMode, Type type)
+            : this(typeInclusionMode, [type])
         {
         }
 
-        public GenerateModelInspectorAttribute(bool scanAllTypes, Type type1, Type type2)
-            : this(scanAllTypes, [type1, type2])
+        public GenerateModelInspectorAttribute(ModelInspectorGenerationTypeInclusionMode typeInclusionMode, Type type1, Type type2)
+            : this(typeInclusionMode, [type1, type2])
         {
         }
 
-        public GenerateModelInspectorAttribute(bool scanAllTypes, Type type1, Type type2, Type type3)
-            : this(scanAllTypes, [type1, type2, type3])
+        public GenerateModelInspectorAttribute(ModelInspectorGenerationTypeInclusionMode typeInclusionMode, Type type1, Type type2, Type type3)
+            : this(typeInclusionMode, [type1, type2, type3])
         {
         }
 
-        public GenerateModelInspectorAttribute(bool scanAllTypes, params Type[] types)
+        public GenerateModelInspectorAttribute(ModelInspectorGenerationTypeInclusionMode typeInclusionMode, params Type[] types)
         {
-            ScanAllTypes = scanAllTypes;
+            TypeInclusionMode = typeInclusionMode;
             Types = types;
         }
 
-        public bool ScanAllTypes { get; }
+        public ModelInspectorGenerationTypeInclusionMode TypeInclusionMode { get; }
 
         public Type[] Types { get; }
     }
 
-    [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
-    internal sealed class GenerateAllFhirTypesAttribute : Attribute
+    public enum ModelInspectorGenerationTypeInclusionMode
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="GenerateAllFhirTypesAttribute"/> class.
-        /// </summary>
-        public GenerateAllFhirTypesAttribute()
-        {
-        }
-
-        public GenerateAllFhirTypesAttribute(params Type[] assembliesContainingType)
-        {
-            AssembliesContainingTypes = assembliesContainingType;
-        }
-
-        public Type[] AssembliesContainingTypes { get; set; } = [];
+        Default = IncludeAllTypesInAssembly,
+        IncludeAllTypesInAssembly = 0,
+        IncludeOnlyListedTypes,
+        IncludeAllCoreFhirTypes,
     }
 }

@@ -7,6 +7,10 @@
 	 <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Include="..\Hl7.Fhir.Shims.STU3AndUp\SourceGeneration\GenerateModelInspectorAttribute.cs" Link="GenerateModelInspectorAttribute.cs" />
+  </ItemGroup>
+
    <ItemGroup>
 	  <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4">
 		 <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

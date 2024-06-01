@@ -10,16 +10,16 @@ namespace Firely.Sdk.Benchmarks;
 [MemoryDiagnoser]
 public partial class ModelInspectorBenchmarks
 {
-    [GenerateModelInspector(false, typeof(CapabilityStatement), typeof(Appointment), typeof(OperationDefinition))]
+    [GenerateModelInspector(ModelInspectorGenerationTypeInclusionMode.IncludeAllCoreFhirTypes, typeof(CapabilityStatement), typeof(Appointment), typeof(OperationDefinition))]
     public static partial Type[] Types4Resources();
 
-    [GenerateModelInspector(false, typeof(CapabilityStatement), typeof(Appointment), typeof(OperationDefinition))]
+    [GenerateModelInspector(ModelInspectorGenerationTypeInclusionMode.IncludeAllCoreFhirTypes, typeof(CapabilityStatement), typeof(Appointment), typeof(OperationDefinition))]
     public static partial ClassMapping[] ClassMappings4Resources();
 
-    [GenerateModelInspector(false, typeof(CapabilityStatement), typeof(Appointment), typeof(OperationDefinition))]
+    [GenerateModelInspector(ModelInspectorGenerationTypeInclusionMode.IncludeAllCoreFhirTypes, typeof(CapabilityStatement), typeof(Appointment), typeof(OperationDefinition))]
     public static partial EnumMapping[] EnumMappings4Resources();
 
-    [GenerateModelInspector(true, typeof(FhirString), typeof(CapabilityStatement), typeof(Patient))]
+    [GenerateModelInspector(ModelInspectorGenerationTypeInclusionMode.Default, typeof(FhirString), typeof(CapabilityStatement), typeof(Patient))]
     public static partial Type[] TypesAllResources();
 
     [GenerateModelInspector]
@@ -40,17 +40,17 @@ public partial class ModelInspectorBenchmarks
         inspector = ImportTypeAllResources();
         Console.WriteLine($"ImportTypeAllResources:        Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
 
-        inspector = NewWithSourceGenMappingsAllResources();
+        inspector = SourceGenMappingsAllResources();
         Console.WriteLine($"SourceGenMappingsAllResources: Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
 
         inspector = NewWithTypesAllResources();
         Console.WriteLine($"NewWithTypesAllResources:      Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
 
-        inspector = NewWithSourceGenMappings4Resources();
-        Console.WriteLine($"SourceGenMappings4Resources:   Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
-
         inspector = ImportType4Resources();
         Console.WriteLine($"ImportType4Resources:          Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
+
+        inspector = SourceGenMappings4Resources();
+        Console.WriteLine($"SourceGenMappings4Resources:   Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
 
         inspector = NewWithTypes4Resources();
         Console.WriteLine($"NewWithTypes4Resources:        Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
@@ -101,10 +101,25 @@ public partial class ModelInspectorBenchmarks
     }
 
     [Benchmark]
+    public ModelInspector SourceGenMappingsAllResources()
+    {
+        ResetCache();
+        return new ModelInspector(ModelInfo.Version, ClassMappingsAllResources(), EnumMappingsAllResources());
+    }
+
+    [Benchmark]
+    public ModelInspector NewWithTypesAllResources()
+    {
+        FhirReleaseParser.Parse(ModelInfo.Version);
+        ResetCache();
+        return ModelInspector.ForTypes(ModelInfo.Version, TypesAllResources());
+    }
+
+    [Benchmark]
     public ModelInspector ImportType4Resources()
     {
         ResetCache();
-        var inspector = new ModelInspector(Hl7.Fhir.Specification.FhirRelease.R5); //ModelInspector.ForAssembly(typeof(ModelInfo).Assembly);
+        var inspector = ModelInspector.ForAssembly(typeof(FhirString).Assembly);
         foreach (var t in TestResources)
         {
             inspector.ImportType(t);
@@ -114,25 +129,10 @@ public partial class ModelInspectorBenchmarks
     }
 
     [Benchmark]
-    public ModelInspector NewWithSourceGenMappingsAllResources()
-    {
-        ResetCache();
-        return new ModelInspector(ModelInfo.Version, ClassMappingsAllResources(), EnumMappingsAllResources());
-    }
-
-    [Benchmark]
-    public ModelInspector NewWithSourceGenMappings4Resources()
+    public ModelInspector SourceGenMappings4Resources()
     {
         ResetCache();
         return new ModelInspector(ModelInfo.Version, ClassMappings4Resources(), EnumMappings4Resources());
-    }
-
-    [Benchmark]
-    public ModelInspector NewWithTypesAllResources()
-    {
-        FhirReleaseParser.Parse(ModelInfo.Version);
-        ResetCache();
-        return ModelInspector.ForTypes(ModelInfo.Version, TypesAllResources());
     }
 
     [Benchmark]

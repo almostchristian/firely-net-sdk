@@ -262,7 +262,7 @@ namespace Hl7.Fhir.Model
         public static ModelInspector ModelInspector => GeneratedModelInspector();
 
 
-        [GenerateModelInspector(true, typeof(FhirString), typeof(CapabilityStatement), typeof(Patient))]
+        [GenerateModelInspector(ModelInspectorGenerationTypeInclusionMode.Default, typeof(FhirString), typeof(CapabilityStatement), typeof(Patient))]
         internal static partial ModelInspector GeneratedModelInspector();
     }
 
