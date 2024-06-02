@@ -226,6 +226,7 @@ internal static class Helpers
             .OfType<IPropertySymbol>();
 
         var codeType = classIndex.Keys.FirstOrDefault(x => x.ToDisplayString() == "Hl7.Fhir.Model.Code") as ITypeSymbol;
+        var enumType = classIndex.Keys.FirstOrDefault(x => x.ToDisplayString() == "System.Enum") as ITypeSymbol;
         foreach (var property in properties)
         {
             if (property.TryGetAttribute("Hl7.Fhir.Introspection.FhirElementAttribute", out var elementData))
@@ -274,6 +275,11 @@ internal static class Helpers
                     propertyType = nullable.TypeArguments[0];
                 }
 
+                if (propertyType.IsEnumMapping(out _))
+                {
+                    propertyType = enumType;
+                }
+
                 List<string> validationAttribs = new();
                 foreach (var valAttrib in property.GetAttributes().Where(x => x.ConstructorArguments.Length == 0 && x.NamedArguments.Length == 0 && x.AttributeClass?.BaseType?.Name == "System.ComponentModel.DataAnnotations.ValidationAttribute"))
                 {
@@ -295,40 +301,49 @@ internal static class Helpers
                     validationAttribs.Add($"new Hl7.Fhir.Validation.CardinalityAttribute {{ {string.Join(", ", cardinalityData.NamedArguments.Select(x => $"{x.Key} = {x.Value.Value.ToString()}"))} }}");
                 }
 
-                var types = string.Empty;
+                var fhirTypes = string.Empty;
                 if (choice != "Hl7.Fhir.Introspection.ChoiceType.None" && property.TryGetAttribute("Hl7.Fhir.Validation.AllowedTypesAttribute", out var typesData))
                 {
                     var typeArgs = typesData!.ConstructorArguments[0].Values.OfType<TypedConstant>().Select(x => x.Value);
-                    types = string.Join(", ", typeArgs.Select(t => $"typeof({t!.ToString()})"));
+                    fhirTypes = string.Join(", ", typeArgs.Select(t => $"typeof({t!.ToString()})"));
 
-                    validationAttribs.Add($"new Hl7.Fhir.Validation.AllowedTypesAttribute({types})");
+                    validationAttribs.Add($"new Hl7.Fhir.Validation.AllowedTypesAttribute({fhirTypes})");
+                }
+                else if (property.TryGetAttribute("Hl7.Fhir.Introspection.DeclaredTypeAttribute", out var declaredTypeData))
+                {
+                    var t = declaredTypeData!.NamedArguments.Single(x => x.Key == "Type").Value.Value;
+                    fhirTypes = $"typeof({t!.ToString()})";
+                }
+                else
+                {
+                    fhirTypes = $"typeof({propertyType.ToDisplayString(NullableFlowState.None)})";
                 }
 
-                var isPrimitive = propertyType.IsAllowedNativeTypeForDataTypeValue();
+                var isPrimitive = property.Type.IsAllowedNativeTypeForDataTypeValue();
 
-                code.AppendLine($"                CreateProp(cm, cm.NativeType.GetProperty({property.Name.SurroundWithQuotesOrNull()})),");
+                //code.AppendLine($"                CreateProp(cm, cm.NativeType.GetProperty({property.Name.SurroundWithQuotesOrNull()})),");
                 code.AppendLine(
                     $$"""
-                                    //BuildProp<{{fhirType.ToDisplayString()}}, {{property.Type.ToDisplayString(NullableFlowState.None)}}>(
-                                    //   {{(propName ?? property.Name).SurroundWithQuotesOrNull()}},
-                                    //   cm, // ClassMapping for T
-                                    //   GeneratedModelInspectorContainer.AllClassMappings{{ModelInspectorGenerator.arrayAccess}}[{{(classIndex.TryGetValue(propertyType, out var idx) ? idx : -1)}}], // ClassMapping for TProp
-                                    //   [{{types}}], //fhirTypes
-                                    //   FhirRelease,
-                                    //   inSummary: {{inSummary}},
-                                    //   isModifier: {{isModifier}},
-                                    //   choice: {{choice}},
-                                    //   serializationHint: {{xmlRep}},
-                                    //   order: {{order}},
-                                    //   isCollection: {{isCollection.ToString().ToLower()}},
-                                    //   isMandatoryElement: {{isMandatory.ToString().ToLower()}},
-                                    //   isPrimitive: {{isPrimitive.ToString().ToLower()}},
-                                    //   representsValueElement: {{(isPrimitive && IsPrimitiveValueElement(elementData, property, isPrimitive)).ToString().ToLower()}},
-                                    //   validationAttributes: [{{string.Join(", ", validationAttribs)}}],
-                                    //   fiveWs: {{fiveWs.SurroundWithQuotesOrNull()}},
-                                    //   bindingName: {{bindingName.SurroundWithQuotesOrNull()}},
-                                    //   getter: static i => i.{{property.Name}},
-                                    //   setter: static (i, v) => i.{{property.Name}} = v),
+                                    BuildProp<{{fhirType.ToDisplayString()}}, {{property.Type.ToDisplayString(NullableFlowState.None)}}>(
+                                       {{(propName ?? property.Name).SurroundWithQuotesOrNull()}},
+                                       cm, // ClassMapping for T
+                                       GeneratedModelInspectorContainer.AllClassMappings{{ModelInspectorGenerator.arrayAccess}}[{{(classIndex.TryGetValue(propertyType, out var idx) ? idx : -1)}}], // ClassMapping for TProp
+                                       [{{fhirTypes}}], //fhirTypes
+                                       FhirRelease,
+                                       inSummary: {{inSummary}},
+                                       isModifier: {{isModifier}},
+                                       choice: {{choice}},
+                                       serializationHint: {{xmlRep}},
+                                       order: {{order}},
+                                       isCollection: {{isCollection.ToString().ToLower()}},
+                                       isMandatoryElement: {{isMandatory.ToString().ToLower()}},
+                                       isPrimitive: {{isPrimitive.ToString().ToLower()}},
+                                       representsValueElement: {{(isPrimitive && elementData.IsPrimitiveValueElement()).ToString().ToLower()}},
+                                       validationAttributes: [{{string.Join(", ", validationAttribs)}}],
+                                       fiveWs: {{fiveWs.SurroundWithQuotesOrNull()}},
+                                       bindingName: {{bindingName.SurroundWithQuotesOrNull()}},
+                                       getter: static i => i.{{property.Name}},
+                                       setter: static (i, v) => i.{{property.Name}} = v),
                     """);
             }
         }
@@ -346,16 +361,12 @@ internal static class Helpers
         if (type is INamedTypeSymbol nt && nt.Arity == 1 && type.ToDisplayString().EndsWith("?"))
             type = nt.TypeArguments[0];
 
-        return type.IsEnumMapping(out _) || Helpers.SupportedDotNetPrimitiveTypeNames.Contains(type.ToDisplayString());
+        return type.IsEnumMapping(out _) || Helpers.SupportedDotNetPrimitiveTypeNames.Contains(type.ToDisplayString(NullableFlowState.None));
     }
 
-    private static bool IsPrimitiveValueElement(AttributeData valueElementAttr, IPropertySymbol prop, bool isPrimitive)
+    private static bool IsPrimitiveValueElement(this AttributeData valueElementAttr)
     {
-        var isValueElement = valueElementAttr != null && isPrimitive;
-
-        return !isValueElement || IsAllowedNativeTypeForDataTypeValue(prop.Type)
-            ? isValueElement
-            : false; // is error
+        return valueElementAttr.NamedArguments.Any(x => x.Key == "IsPrimitiveValue" && bool.Parse(x.Value.Value?.ToString() ?? "true"));
     }
 
     public static void WriteFhirEnumeration(this ITypeSymbol enumType, StringBuilder code, AttributeData data)

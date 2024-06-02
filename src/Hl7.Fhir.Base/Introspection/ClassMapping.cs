@@ -127,7 +127,7 @@ namespace Hl7.Fhir.Introspection
                 propMappingFactory = cm => new PropertyMappingCollection(propertyMapFactory(cm));
             }
 
-            return new ClassMapping(name, nativeType, release, propMappingFactory)
+            var mapping = new ClassMapping(name, nativeType, release, propMappingFactory)
             {
                 IsResource = isResource,
                 IsCodeOfT = isCodeOfT,
@@ -139,6 +139,10 @@ namespace Hl7.Fhir.Introspection
                 Canonical = canonical,
                 ValidationAttributes = validationAttributes ?? [],
             };
+
+            _mappedClasses.GetOrAdd((nativeType, release), mapping);
+
+            return mapping;
         }
 
         private ClassMapping(string name, Type nativeType, FhirRelease release, Func<ClassMapping, PropertyMappingCollection>? propertyMappingFactory = null)
