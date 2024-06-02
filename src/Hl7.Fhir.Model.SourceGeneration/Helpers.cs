@@ -166,11 +166,11 @@ internal static class Helpers
     {
         if (netType is IArrayTypeSymbol arrayType)
         {
-            code.AppendLine($"          Hl7.Fhir.Introspection.ClassMapping.Build(\"Net.{arrayType.ElementType.Name}[]\", typeof({netType.ToDisplayString()}), FhirRelease),");
+            code.AppendLine($"          Hl7.Fhir.Introspection.ClassMapping.Build(\"Net.{arrayType.ElementType.Name}[]\", typeof({netType.ToDisplayString()}), FhirRelease, isPrimitive: true),");
         }
         else
         {
-            code.AppendLine($"          Hl7.Fhir.Introspection.ClassMapping.Build(\"Net.{netType.Name}\", typeof({netType.ToDisplayString()}), FhirRelease),");
+            code.AppendLine($"          Hl7.Fhir.Introspection.ClassMapping.Build(\"Net.{netType.Name}\", typeof({netType.ToDisplayString()}), FhirRelease, isPrimitive: true),");
         }
     }
 
