@@ -118,12 +118,12 @@ namespace Hl7.Fhir.Introspection
             bool isBindable = false,
             string? canonical = null,
             ValidationAttribute[]? validationAttributes = null,
-            Func<PropertyMapping[]>? propertyMapFactory = null)
+            Func<ClassMapping, PropertyMapping[]>? propertyMapFactory = null)
         {
-            Func<PropertyMappingCollection>? propMappingFactory = null;
+            Func<ClassMapping, PropertyMappingCollection>? propMappingFactory = null;
             if (propertyMapFactory != null)
             {
-                propMappingFactory = () => new PropertyMappingCollection(propertyMapFactory());
+                propMappingFactory = cm => new PropertyMappingCollection(propertyMapFactory(cm));
             }
 
             return new ClassMapping(name, nativeType, release, propMappingFactory)
@@ -139,12 +139,12 @@ namespace Hl7.Fhir.Introspection
             };
         }
 
-        private ClassMapping(string name, Type nativeType, FhirRelease release, Func<PropertyMappingCollection>? propertyMappngFactory = null)
+        private ClassMapping(string name, Type nativeType, FhirRelease release, Func<ClassMapping, PropertyMappingCollection>? propertyMappingFactory = null)
         {
             Name = name;
             NativeType = nativeType;
             Release = release;
-            _propertyMappingFactory = propertyMappngFactory ?? inspectProperties;
+            _propertyMappingFactory = propertyMappingFactory ?? inspectProperties;
         }
 
         /// <summary>
@@ -228,13 +228,13 @@ namespace Hl7.Fhir.Introspection
         // This list is created lazily. This not only improves initial startup time of 
         // applications but also ensures circular references between types will not cause loops.
         private PropertyMappingCollection? _mappings;
-        private readonly Func<PropertyMappingCollection> _propertyMappingFactory;
+        private readonly Func<ClassMapping, PropertyMappingCollection> _propertyMappingFactory;
 
         private PropertyMappingCollection propertyMappings
         {
             get
             {
-                LazyInitializer.EnsureInitialized(ref _mappings, _propertyMappingFactory);
+                LazyInitializer.EnsureInitialized(ref _mappings, () => _propertyMappingFactory(this));
                 return _mappings!;
             }
         }
@@ -358,15 +358,15 @@ namespace Hl7.Fhir.Introspection
 
         // Enumerate this class' properties using reflection, create PropertyMappings
         // for them and add them to the PropertyMappings.
-        private PropertyMappingCollection inspectProperties()
+        private static PropertyMappingCollection inspectProperties(ClassMapping classMapping)
         {
             return new PropertyMappingCollection(map());
-
+            
             IEnumerable<PropertyMapping> map()
             {
-                foreach (var property in ReflectionHelper.FindPublicProperties(NativeType))
+                foreach (var property in ReflectionHelper.FindPublicProperties(classMapping.NativeType))
                 {
-                    if (!PropertyMapping.TryCreate(property, out var propMapping, this, Release)) continue;
+                    if (!PropertyMapping.TryCreate(property, out var propMapping, classMapping, classMapping.Release)) continue;
                     yield return propMapping!;
                 }
             }

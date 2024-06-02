@@ -35,7 +35,9 @@ namespace Hl7.Fhir.Introspection
             Type implementingType,
             ClassMapping propertyTypeMapping,
             Type[] fhirTypes,
-            FhirRelease version)
+            FhirRelease version,
+            Func<object, object?>? getter = null,
+            Action<object, object?>? setter = null)
         {
             Name = name;
             NativeProperty = pi;
@@ -45,7 +47,38 @@ namespace Hl7.Fhir.Introspection
             PropertyTypeMapping = propertyTypeMapping;
             DeclaringClass = declaringClass;
             FiveWs = string.Empty;
-            ValidationAttributes = Array.Empty<ValidationAttribute>();
+            ValidationAttributes = [];
+#if NET6_0_OR_GREATER
+            if (getter != null)
+            {
+                _getter = new Lazy<Func<object, object?>>(getter);
+            }
+#else
+            if (getter != null)
+            {
+                _getter = new Lazy<Func<object, object?>>(() => getter);
+            }
+#endif
+            else
+            {
+                _getter = new Lazy<Func<object, object?>>(() => pi.GetValueGetter());
+            }
+
+#if NET6_0_OR_GREATER
+            if (setter != null)
+            {
+                _setter = new Lazy<Action<object, object?>>(setter);
+            }
+#else
+            if (setter != null)
+            {
+                _setter = new Lazy<Action<object, object?>>(() => setter);
+            }
+#endif
+            else
+            {
+                _setter = new Lazy<Action<object, object?>>(() => pi.GetValueSetter());
+            }
         }
 
         /// <summary>
@@ -240,6 +273,46 @@ namespace Hl7.Fhir.Introspection
             return true;
         }
 
+        public static PropertyMapping Build(
+            string name,
+            ClassMapping declaringClass,
+            PropertyInfo nativeProperty,
+            Type implementingType,
+            ClassMapping propertyTypeMapping,
+            Type[] fhirTypes,
+            FhirRelease fhirRelease,
+            bool inSummary = default,
+            bool isModifier = default,
+            ChoiceType choice = default,
+            XmlRepresentation serializationHint = default,
+            int order = 0,
+            bool isCollection = false,
+            bool isMandatoryElement = false,
+            bool isPrimitive = false,
+            bool representsValueElement = false,
+            ValidationAttribute[]? validationAttributes = null,
+            string fiveWs = null!,
+            string? bindingName = null,
+            Func<object, object?>? getter = null,
+            Action<object, object?>? setter = null)
+        {
+            return new PropertyMapping(name, declaringClass, nativeProperty, implementingType, propertyTypeMapping!, fhirTypes, fhirRelease, getter, setter)
+            {
+                InSummary = inSummary,
+                IsModifier = isModifier,
+                Choice = choice,
+                SerializationHint = serializationHint,
+                Order = order,
+                IsCollection = isCollection,
+                IsMandatoryElement = isMandatoryElement,
+                IsPrimitive = isPrimitive,
+                RepresentsValueElement = representsValueElement,
+                ValidationAttributes = validationAttributes ?? [],
+                FiveWs = fiveWs,
+                BindingName = bindingName,
+            };
+        }
+
         /// <summary>
         /// This function tried to figure out a concrete type for the element represented by this property.
         /// If it cannot derive a concrete type, it will just return <see cref="ImplementingType"/>.
@@ -282,17 +355,17 @@ namespace Hl7.Fhir.Introspection
         /// <summary>
         /// Given an instance of the parent class, gets the value for this property.
         /// </summary>
-        public object? GetValue(object instance) => LazyInitializer.EnsureInitialized(ref _getter, NativeProperty.GetValueGetter)!(instance);
+        public object? GetValue(object instance) => _getter.Value(instance);
 
-        private Func<object, object?>? _getter;
+        private readonly Lazy<Func<object, object?>> _getter;
 
         /// <summary>
         /// Given an instance of the parent class, sets the value for this property.
         /// </summary>
         public void SetValue(object instance, object? value) =>
-            LazyInitializer.EnsureInitialized(ref _setter, NativeProperty.GetValueSetter)!(instance, value);
+            _setter.Value(instance, value);
 
-        private Action<object, object?>? _setter;
+        private readonly Lazy<Action<object, object?>> _setter;
 
         #region IElementDefinitionSummary members
         string IElementDefinitionSummary.ElementName => this.Name;
@@ -368,7 +441,7 @@ namespace Hl7.Fhir.Introspection
                 return ClassMapping.TryGetMappingForType(ft, Release, out var tm)
                     ? ((IStructureDefinitionSummary)tm!).TypeName
                     : throw new NotSupportedException($"Type '{ft.Name}' is listed as an allowed type for property " +
-                        $"'{buildQualifiedPropName(NativeProperty)}', but it does not seem to" +
+                        $"'{(NativeProperty != null ? buildQualifiedPropName(NativeProperty) : $"{DeclaringClass.Name}.{Name}")}', but it does not seem to" +
                         $"be a valid FHIR type POCO.");
             }
         }

@@ -14,13 +14,13 @@ namespace Hl7.Fhir.Model.SourceGeneration;
 public class ModelInspectorGenerator : ISourceGenerator
 {
 #if CACHING
-    private const string arrayTerminator = "]);";
-    private const string terminator = ");";
-    private const string arrayAccess = ".Value";
+    internal const string arrayTerminator = "]);";
+    internal const string terminator = ");";
+    internal const string arrayAccess = ".Value";
 #else
-    private const string arrayTerminator = "];";
-    private const string terminator = ";";
-    private const string arrayAccess = "()";
+    internal const string arrayTerminator = "];";
+    internal const string terminator = ";";
+    internal const string arrayAccess = "()";
 #endif
     private const string FhirModelAssemblyAttributeName = "Hl7.Fhir.Introspection.FhirModelAssemblyAttribute";
     private static readonly string AssemblyVersion = typeof(ModelInspectorGenerator).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "1.0.0.0";
@@ -38,16 +38,18 @@ public class ModelInspectorGenerator : ISourceGenerator
             return;
         }
 
-#if LAUNCH_DEBUGGER
+#if LAUNCH_DEBUGGER && DEBUG
         System.Diagnostics.Debugger.Launch();
 #endif
         var typeInclusionMode = receiver.MethodDeclarations.Min(static x => x.Mode);
 
         var definedTypes = receiver.MethodDeclarations.SelectMany(static x => x.Types).ToList();
 
-        HashSet<INamedTypeSymbol> allFhirTypes = FindAllTypes(context, typeInclusionMode, definedTypes);
-        var allClassMappings = new List<KeyValuePair<INamedTypeSymbol, AttributeData>>();
-        var allEnumMappings = new List<KeyValuePair<INamedTypeSymbol, AttributeData>>();
+        FhirRelease fhirRelease;
+
+        HashSet<ITypeSymbol> allFhirTypes = FindAllTypes(context, typeInclusionMode, definedTypes, out fhirRelease);
+        var allClassMappings = new Dictionary<ITypeSymbol, AttributeData>(SymbolEqualityComparer.Default);
+        var allEnumMappings = new Dictionary<ITypeSymbol, AttributeData>(SymbolEqualityComparer.Default);
 
         Helpers.PopulateMappings(allFhirTypes, allClassMappings, allEnumMappings);
 
@@ -65,13 +67,55 @@ public class ModelInspectorGenerator : ISourceGenerator
                 [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Hl7.Fhir.Model.SourceGeneration", "{{AssemblyVersion}}")]
                 file static class GeneratedModelInspectorContainer
                 {
-                    private static readonly Hl7.Fhir.Specification.FhirRelease FhirRelease = Hl7.Fhir.Utility.FhirReleaseParser.Parse(Hl7.Fhir.Model.ModelInfo.Version);
-            
-                    private static global::System.Collections.Generic.IEnumerable<global::System.ComponentModel.DataAnnotations.ValidationAttribute> GetValidationAttributes(global::System.Reflection.MemberInfo t, Hl7.Fhir.Specification.FhirRelease version)
-                    {
-                        return Hl7.Fhir.Utility.ReflectionHelper.GetAttributes<global::System.ComponentModel.DataAnnotations.ValidationAttribute>(t).Where(isRelevant);
+                    private static readonly Hl7.Fhir.Specification.FhirRelease FhirRelease = Hl7.Fhir.Specification.FhirRelease.{{fhirRelease}};
 
-                        bool isRelevant(global::System.Attribute a) => a is not Hl7.Fhir.Introspection.IFhirVersionDependent vd || a.AppliesToRelease(version);
+                    private static Hl7.Fhir.Introspection.PropertyMapping CreateProp(Hl7.Fhir.Introspection.ClassMapping declaringClass, System.Reflection.PropertyInfo prop)
+                    {
+                        if (Hl7.Fhir.Introspection.PropertyMapping.TryCreate(prop, out var result, declaringClass, FhirRelease))
+                        {
+                            return result;
+                        }
+
+                        throw new System.InvalidOperationException($"Cannot create PropertyMapping for [{prop}] for type [{declaringClass.Name}].");
+                    }
+
+                    private static Hl7.Fhir.Introspection.PropertyMapping BuildProp<T, TProp>(
+                        string name,
+                        Hl7.Fhir.Introspection.ClassMapping declaringClass,
+                        Hl7.Fhir.Introspection.ClassMapping propertyTypeMapping,
+                        System.Type[] fhirTypes,
+                        Hl7.Fhir.Specification.FhirRelease version,
+                        bool inSummary = default,
+                        bool isModifier = default,
+                        Hl7.Fhir.Introspection.ChoiceType? choice = default,
+                        Hl7.Fhir.Specification.XmlRepresentation? serializationHint = default,
+                        int order = 0,
+                        bool isCollection = false,
+                        bool isMandatoryElement = false,
+                        bool isPrimitive = false,
+                        bool representsValueElement = false,
+                        System.ComponentModel.DataAnnotations.ValidationAttribute[] validationAttributes = null,
+                        string fiveWs = null,
+                        string bindingName = null,
+                        System.Func<T, TProp> getter = null,
+                        System.Action<T, TProp> setter = null)
+                    {
+                        System.Func<object, object> getterTransformed = null;
+                        System.Action<object, object> setterTransformed = null;
+                        if (getter != null)
+                        {
+                            getterTransformed = (object instance) => (object)getter((T)instance);
+                        }
+
+                        if (setter != null)
+                        {
+                            setterTransformed = (object instance, object value) => setter((T)instance, (TProp)value);
+                        }
+
+                        return Hl7.Fhir.Introspection.PropertyMapping.Build(
+                            name, declaringClass, null, typeof(T), propertyTypeMapping, fhirTypes, version,
+                            inSummary, isModifier, choice ?? Hl7.Fhir.Introspection.ChoiceType.None, serializationHint ?? Hl7.Fhir.Specification.XmlRepresentation.None, order, isCollection, isMandatoryElement, isPrimitive,
+                            representsValueElement, validationAttributes, fiveWs, bindingName, getterTransformed, setterTransformed);
                     }
 
                 """);
@@ -89,6 +133,10 @@ public class ModelInspectorGenerator : ISourceGenerator
                 }
             });
 
+            var classIndex = allClassMappings
+                .Select(static (x, i) => (x.Key, i))
+                .Where(static x => !x.Key.IsCqlType())
+                .ToDictionary(static x => x.Key, static x => x.i, SymbolEqualityComparer.Default);
             WriteMethod(code, "Hl7.Fhir.Introspection.ClassMapping[]", "AllClassMappings", code =>
             {
                 foreach (var fhirType in allClassMappings)
@@ -98,13 +146,17 @@ public class ModelInspectorGenerator : ISourceGenerator
                         return;
                     }
 
-                    if (fhirType.Key.IsCqlType())
+                    if (fhirType.Key.IsSupportedNetType())
                     {
-                        WriteCqlType(code, fhirType.Key, fhirType.Value);
+                        fhirType.Key.WriteNetType(code);
+                    }
+                    else if (fhirType.Key.IsCqlType())
+                    {
+                        fhirType.Key.WriteCqlType(code, fhirType.Value);
                     }
                     else
                     {
-                        WriteFhirType(code, fhirType.Key, fhirType.Value);
+                        fhirType.Key.WriteFhirType(code, fhirType.Value, classIndex, fhirRelease);
                     }
                 }
             });
@@ -118,7 +170,7 @@ public class ModelInspectorGenerator : ISourceGenerator
                         return;
                     }
 
-                    WriteFhirEnumeration(code, fhirType.Key, fhirType.Value);
+                    fhirType.Key.WriteFhirEnumeration(code, fhirType.Value);
                 }
             });
 
@@ -130,7 +182,7 @@ public class ModelInspectorGenerator : ISourceGenerator
                 }
                 else
                 {
-                    var fhirTypes = FindAllTypes(context, methodDoScan, methodDefinedTypes.ToList());
+                    var fhirTypes = FindAllTypes(context, methodDoScan, methodDefinedTypes.ToList(), out var methodRelease);
                     if (allFhirTypes.SetEquals(fhirTypes))
                     {
                         WriteNoDiff();
@@ -156,13 +208,17 @@ public class ModelInspectorGenerator : ISourceGenerator
                             {
                                 if (fhirType.IsClassMapping(out var mapping))
                                 {
-                                    if (fhirType.IsCqlType())
+                                    if (fhirType.IsSupportedNetType())
                                     {
-                                        WriteCqlType(code, fhirType, mapping);
+                                        fhirType.WriteNetType(code);
+                                    }
+                                    else if (fhirType.IsCqlType())
+                                    {
+                                        fhirType.WriteCqlType(code, mapping);
                                     }
                                     else
                                     {
-                                        WriteFhirType(code, fhirType, mapping);
+                                        fhirType.WriteFhirType(code, mapping, classIndex, methodRelease);
                                     }
                                 }
                             }
@@ -174,7 +230,7 @@ public class ModelInspectorGenerator : ISourceGenerator
                             {
                                 if (fhirType.IsEnumMapping(out var mapping))
                                 {
-                                    WriteFhirEnumeration(code, fhirType, mapping);
+                                    fhirType.WriteFhirEnumeration(code, mapping);
                                 }
                             }
                         });
@@ -231,14 +287,17 @@ public class ModelInspectorGenerator : ISourceGenerator
             context.AddSource("GeneratedModelInspectorContainer.g.cs", SourceText.From(code.ToString()!, Encoding.UTF8));
         }
 
-        static HashSet<INamedTypeSymbol> FindAllTypes(GeneratorExecutionContext context, ModelInspectorGenerationTypeInclusionMode typeInclusionMode, List<INamedTypeSymbol> definedTypes)
+        static HashSet<ITypeSymbol> FindAllTypes(GeneratorExecutionContext context, ModelInspectorGenerationTypeInclusionMode typeInclusionMode, List<INamedTypeSymbol> definedTypes, out FhirRelease release)
         {
-            HashSet<INamedTypeSymbol> fhirTypes;
+            HashSet<ITypeSymbol> fhirTypes;
+            FhirRelease? scannedRelease = null;
             if (typeInclusionMode == ModelInspectorGenerationTypeInclusionMode.Default || definedTypes.Count == 0)
             {
-                fhirTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+                AttributeData? modelMetadata = null;
+                fhirTypes = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
                 var hl7Asms = definedTypes
                     .Select(static x => x.ContainingAssembly)
+                    .Where(x => x.TryGetAttribute(FhirModelAssemblyAttributeName, out modelMetadata))
                     .Distinct(SymbolEqualityComparer.Default)
                     .OfType<IAssemblySymbol>()
                     .ToList();
@@ -250,7 +309,7 @@ public class ModelInspectorGenerator : ISourceGenerator
                     hl7Asms = context.Compilation.References
                         .Select(context.Compilation.GetAssemblyOrModuleSymbol)
                         .OfType<IAssemblySymbol>()
-                        .Where(static x => x.TryGetAttribute(FhirModelAssemblyAttributeName, out _))
+                        .Where(x => x.TryGetAttribute(FhirModelAssemblyAttributeName, out modelMetadata))
                         .ToList();
                 }
 
@@ -265,10 +324,15 @@ public class ModelInspectorGenerator : ISourceGenerator
                 {
                     asm.GlobalNamespace.TraverseNamespace(fhirTypes, context.CancellationToken);
                 }
+
+                if (modelMetadata.ReadSinceProperty() is FhirRelease r)
+                {
+                    scannedRelease = r;
+                }
             }
             else
             {
-                fhirTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+                fhirTypes = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
 
                 if (typeInclusionMode == ModelInspectorGenerationTypeInclusionMode.IncludeAllCoreFhirTypes)
                 {
@@ -297,6 +361,29 @@ public class ModelInspectorGenerator : ISourceGenerator
                 }
             }
 
+            foreach (var dotnetType in Helpers.SupportedDotNetPrimitiveTypeNames.ToList())
+            {
+                var searchType = dotnetType;
+                bool isArray = false;
+                if (dotnetType.EndsWith("[]"))
+                {
+                    isArray = true;
+                    searchType = dotnetType.Substring(0, dotnetType.Length - 2);
+                }
+
+                if (context.Compilation.GetTypeByMetadataName(searchType) is ITypeSymbol type)
+                {
+                    if (isArray)
+                    {
+                        type = context.Compilation.CreateArrayTypeSymbol(type);
+                    }
+
+                    Helpers.SupportedDotNetPrimitiveTypeNames.Add(type.ToDisplayString());
+                    fhirTypes.Add(type);
+                }
+            }
+
+            release = scannedRelease ?? FhirRelease.STU3;
             return fhirTypes;
 
             IAssemblySymbol? GetCoreAssembly()
@@ -335,62 +422,6 @@ public class ModelInspectorGenerator : ISourceGenerator
 #else
             return $"{returnType} {methodName}";
 #endif
-        }
-
-        static void WriteCqlType(StringBuilder code, INamedTypeSymbol cqlType, AttributeData data)
-        {
-            code.AppendLine($"          Hl7.Fhir.Introspection.ClassMapping.Build(\"System.{cqlType.Name}\", typeof({cqlType.ToDisplayString()}), FhirRelease),");
-        }
-
-        static void WriteFhirType(StringBuilder code, INamedTypeSymbol fhirType, AttributeData data)
-        {
-            // for FhirTypeAttribute
-            var name = data.ConstructorArguments[0].Value?.ToString();
-            var canonical = data.ConstructorArguments.ElementAtOrDefault(1).Value?.ToString();
-            var isResource = data.NamedArguments.FirstOrDefault(static x => x.Key == "IsResource").Value.Value?.ToString()?.ToLower();
-            var isFhirPrimitive = fhirType.IsDerivedFrom("Hl7.Fhir.Model.PrimitiveType");
-            var isCodeOfT = fhirType.IsCodeOfT();
-            var hasValidationAttributes = fhirType.GetAttributes().Any(static attrib => attrib.AttributeClass.IsDerivedFrom("System.ComponentModel.Validation.ValidationAttribute"));
-
-            bool isBackbone = false;
-            string? definitionPath = null;
-            if (fhirType.ContainingType != null && fhirType.TryGetAttribute("Hl7.Fhir.Introspection.BackboneTypeAttribute", out var backboneAttribute))
-            {
-                isBackbone = true;
-                definitionPath = isBackbone ? backboneAttribute!.ConstructorArguments[0].Value?.ToString() : null;
-            }
-
-            var isBindable = fhirType.TryGetAttribute("Hl7.Fhir.Introspection.BindableAttribute", out var bindableAttribute);
-            code.Append(
-                $$"""
-                        Hl7.Fhir.Introspection.ClassMapping.Build(
-                            {{name.SurroundWithQuotesOrNull()}},
-                            typeof({{fhirType.ToDisplayString()}}),
-                            FhirRelease,
-                            isResource: {{(isResource ?? "false")}},
-                            isCodeOfT: {{isCodeOfT.ToString().ToLower()}},
-                            isFhirPrimitive: {{isFhirPrimitive.ToString().ToLower()}},
-                            isBackboneType: {{isBackbone.ToString().ToLower()}},
-                            definitionPath: {{definitionPath.SurroundWithQuotesOrNull()}},
-                            isBindable: {{isBindable.ToString().ToLower()}},
-                            canonical: {{canonical.SurroundWithQuotesOrNull()}},
-                            validationAttributes: {{(hasValidationAttributes ? $"GetValidationAttributes(typeof({fhirType.ToDisplayString()}), FhirRelease).ToArray(), // this can be optimized further" : "[], // it appears this is always empty")}}
-                            propertyMapFactory: null // todo
-                        ),
-                """);
-            code.AppendLine($"");
-        }
-
-        static void WriteFhirEnumeration(StringBuilder code, INamedTypeSymbol enumType, AttributeData data)
-        {
-            // for FhirEnumerationAttribute
-            // arg1 is name,
-            // arg2 is the valueset,
-            // arg3 is the system
-            var name = data.ConstructorArguments[0].Value?.ToString();
-            var valueset = data.ConstructorArguments[1].Value?.ToString();
-            var system = data.ConstructorArguments.ElementAtOrDefault(2).Value?.ToString();
-            code.AppendLine($"        Hl7.Fhir.Introspection.EnumMapping.Build({name.SurroundWithQuotesOrNull()}, {valueset.SurroundWithQuotesOrNull()}, typeof({enumType.ToDisplayString()}), FhirRelease, {system.SurroundWithQuotesOrNull()}),");
         }
     }
 
