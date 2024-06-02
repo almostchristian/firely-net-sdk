@@ -274,6 +274,13 @@ internal static class Helpers
                     propertyType = nullable.TypeArguments[0];
                 }
 
+                List<string> validationAttribs = new();
+                foreach (var valAttrib in property.GetAttributes().Where(x => x.ConstructorArguments.Length == 0 && x.NamedArguments.Length == 0 && x.AttributeClass?.BaseType?.Name == "System.ComponentModel.DataAnnotations.ValidationAttribute"))
+                {
+                    // todo: use singleton instance?
+                    validationAttribs.Add($"new {valAttrib.AttributeClass!.Name}()");
+                }
+
                 string? bindingName = null;
                 if (property.TryGetAttribute("Hl7.Fhir.Introspection.BindingAttribute", out var bindingData))
                 {
@@ -285,41 +292,44 @@ internal static class Helpers
                     int.TryParse(cardinalityData!.NamedArguments.FirstOrDefault(x => x.Key == "Min").Value.Value?.ToString(), out var min))
                 {
                     isMandatory = min > 0;
+                    validationAttribs.Add($"new Hl7.Fhir.Validation.CardinalityAttribute {{ {string.Join(", ", cardinalityData.NamedArguments.Select(x => $"{x.Key} = {x.Value.Value.ToString()}"))} }}");
                 }
 
                 var types = string.Empty;
                 if (choice != "Hl7.Fhir.Introspection.ChoiceType.None" && property.TryGetAttribute("Hl7.Fhir.Validation.AllowedTypesAttribute", out var typesData))
                 {
-                    var typeArgs = typesData.ConstructorArguments[0].Values.OfType<TypedConstant>();
-                    types = string.Join(", ", typeArgs.Select(t => $"typeof({t.Type.ToDisplayString()})"));
+                    var typeArgs = typesData!.ConstructorArguments[0].Values.OfType<TypedConstant>().Select(x => x.Value);
+                    types = string.Join(", ", typeArgs.Select(t => $"typeof({t!.ToString()})"));
+
+                    validationAttribs.Add($"new Hl7.Fhir.Validation.AllowedTypesAttribute({types})");
                 }
 
                 var isPrimitive = propertyType.IsAllowedNativeTypeForDataTypeValue();
 
-                code.AppendLine($"                CreateProp(cm, typeof({fhirType.ToDisplayString()}).GetProperty({property.Name.SurroundWithQuotesOrNull()})),");
-                //code.AppendLine(
-                //    $$"""
-                //                    BuildProp<{{fhirType.ToDisplayString()}}, {{property.Type.ToDisplayString(NullableFlowState.None)}}>(
-                //                       {{(propName ?? property.Name).SurroundWithQuotesOrNull()}},
-                //                       cm, // ClassMapping for T
-                //                       GeneratedModelInspectorContainer.AllClassMappings{{ModelInspectorGenerator.arrayAccess}}[{{(classIndex.TryGetValue(propertyType, out var idx) ? idx : -1)}}], // ClassMapping for TProp
-                //                       [{{types}}], //fhirTypes
-                //                       FhirRelease,
-                //                       inSummary: {{inSummary}},
-                //                       isModifier: {{isModifier}},
-                //                       choice: {{choice}},
-                //                       serializationHint: {{xmlRep}},
-                //                       order: {{order}},
-                //                       isCollection: {{isCollection.ToString().ToLower()}},
-                //                       isMandatoryElement: {{isMandatory.ToString().ToLower()}},
-                //                       isPrimitive: {{isPrimitive.ToString().ToLower()}},
-                //                       //representsValueElement: {{(isPrimitive).ToString().ToLower()}},
-                //                       validationAttributes: null,
-                //                       fiveWs: {{fiveWs.SurroundWithQuotesOrNull()}},
-                //                       bindingName: {{bindingName.SurroundWithQuotesOrNull()}},
-                //                       getter: static x => x.{{property.Name}},
-                //                       setter: static (x, v) => x.{{property.Name}} = v),
-                //    """);
+                code.AppendLine($"                CreateProp(cm, cm.NativeType.GetProperty({property.Name.SurroundWithQuotesOrNull()})),");
+                code.AppendLine(
+                    $$"""
+                                    //BuildProp<{{fhirType.ToDisplayString()}}, {{property.Type.ToDisplayString(NullableFlowState.None)}}>(
+                                    //   {{(propName ?? property.Name).SurroundWithQuotesOrNull()}},
+                                    //   cm, // ClassMapping for T
+                                    //   GeneratedModelInspectorContainer.AllClassMappings{{ModelInspectorGenerator.arrayAccess}}[{{(classIndex.TryGetValue(propertyType, out var idx) ? idx : -1)}}], // ClassMapping for TProp
+                                    //   [{{types}}], //fhirTypes
+                                    //   FhirRelease,
+                                    //   inSummary: {{inSummary}},
+                                    //   isModifier: {{isModifier}},
+                                    //   choice: {{choice}},
+                                    //   serializationHint: {{xmlRep}},
+                                    //   order: {{order}},
+                                    //   isCollection: {{isCollection.ToString().ToLower()}},
+                                    //   isMandatoryElement: {{isMandatory.ToString().ToLower()}},
+                                    //   isPrimitive: {{isPrimitive.ToString().ToLower()}},
+                                    //   representsValueElement: {{(isPrimitive && IsPrimitiveValueElement(elementData, property, isPrimitive)).ToString().ToLower()}},
+                                    //   validationAttributes: [{{string.Join(", ", validationAttribs)}}],
+                                    //   fiveWs: {{fiveWs.SurroundWithQuotesOrNull()}},
+                                    //   bindingName: {{bindingName.SurroundWithQuotesOrNull()}},
+                                    //   getter: static i => i.{{property.Name}},
+                                    //   setter: static (i, v) => i.{{property.Name}} = v),
+                    """);
             }
         }
 
@@ -337,6 +347,15 @@ internal static class Helpers
             type = nt.TypeArguments[0];
 
         return type.IsEnumMapping(out _) || Helpers.SupportedDotNetPrimitiveTypeNames.Contains(type.ToDisplayString());
+    }
+
+    private static bool IsPrimitiveValueElement(AttributeData valueElementAttr, IPropertySymbol prop, bool isPrimitive)
+    {
+        var isValueElement = valueElementAttr != null && isPrimitive;
+
+        return !isValueElement || IsAllowedNativeTypeForDataTypeValue(prop.Type)
+            ? isValueElement
+            : false; // is error
     }
 
     public static void WriteFhirEnumeration(this ITypeSymbol enumType, StringBuilder code, AttributeData data)
