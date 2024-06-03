@@ -263,11 +263,6 @@ internal static class Helpers
                 {
                     isCollection = true;
                     propertyType = nt.TypeArguments[0];
-                }   
-                
-                if (propertyType.ToDisplayString().StartsWith("Hl7.Fhir.Model.Code<"))
-                {
-                    propertyType = codeType!;
                 }
 
                 if (propertyType.ToDisplayString().EndsWith("?") && propertyType is INamedTypeSymbol nullable && nullable.Arity == 1)
@@ -275,12 +270,19 @@ internal static class Helpers
                     propertyType = nullable.TypeArguments[0];
                 }
 
+                var implementingType = propertyType;
+                
+                if (propertyType.ToDisplayString().StartsWith("Hl7.Fhir.Model.Code<"))
+                {
+                    propertyType = codeType!;
+                }
+
                 if (propertyType.IsEnumMapping(out _))
                 {
                     propertyType = enumType;
                 }
 
-                List<string> validationAttribs = new();
+                List<string> validationAttribs = [$"new Hl7.Fhir.Introspection.FhirElementAttribute({propName.SurroundWithQuotesOrNull()})"];
                 foreach (var valAttrib in property.GetAttributes().Where(x => x.ConstructorArguments.Length == 0 && x.NamedArguments.Length == 0 && x.AttributeClass?.BaseType?.Name == "System.ComponentModel.DataAnnotations.ValidationAttribute"))
                 {
                     // todo: use singleton instance?
@@ -327,6 +329,7 @@ internal static class Helpers
                                     BuildProp<{{fhirType.ToDisplayString()}}, {{property.Type.ToDisplayString(NullableFlowState.None)}}>(
                                        {{(propName ?? property.Name).SurroundWithQuotesOrNull()}},
                                        cm, // ClassMapping for T
+                                       typeof({{implementingType.ToDisplayString(NullableFlowState.None)}}),
                                        GeneratedModelInspectorContainer.AllClassMappings{{ModelInspectorGenerator.arrayAccess}}[{{(classIndex.TryGetValue(propertyType, out var idx) ? idx : -1)}}], // ClassMapping for TProp
                                        [{{fhirTypes}}], //fhirTypes
                                        FhirRelease,

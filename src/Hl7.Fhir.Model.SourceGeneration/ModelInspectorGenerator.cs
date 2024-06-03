@@ -82,6 +82,7 @@ public class ModelInspectorGenerator : ISourceGenerator
                     private static Hl7.Fhir.Introspection.PropertyMapping BuildProp<T, TProp>(
                         string name,
                         Hl7.Fhir.Introspection.ClassMapping declaringClass,
+                        global::System.Type implementingType,
                         Hl7.Fhir.Introspection.ClassMapping propertyTypeMapping,
                         System.Type[] fhirTypes,
                         Hl7.Fhir.Specification.FhirRelease version,
@@ -113,7 +114,7 @@ public class ModelInspectorGenerator : ISourceGenerator
                         }
 
                         return Hl7.Fhir.Introspection.PropertyMapping.Build(
-                            name, declaringClass, null, typeof(T), propertyTypeMapping, fhirTypes, version,
+                            name, declaringClass, null, implementingType, propertyTypeMapping, fhirTypes, version,
                             inSummary, isModifier, choice ?? Hl7.Fhir.Introspection.ChoiceType.None, serializationHint ?? Hl7.Fhir.Specification.XmlRepresentation.None, order, isCollection, isMandatoryElement, isPrimitive,
                             representsValueElement, validationAttributes, fiveWs, bindingName, getterTransformed, setterTransformed);
                     }
