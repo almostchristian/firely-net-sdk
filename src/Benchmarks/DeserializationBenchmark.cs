@@ -19,6 +19,9 @@ namespace Firely.Sdk.Benchmarks
         internal XmlReader xmlreader;
         internal JsonSerializerOptions options;
 
+        [Params(false, true)]
+        public bool UseSourceGen { get; set; }
+
         [GlobalSetup]
         public void BenchmarkSetup()
         {
@@ -28,10 +31,21 @@ namespace Firely.Sdk.Benchmarks
             var xmlFileName = Path.Combine("TestData", "fp-test-patient.xml");
             XmlData = File.ReadAllText(xmlFileName);
 
-            XmlDeserializer = new FhirXmlPocoDeserializer();
-            JsonDeserializer = new FhirJsonPocoDeserializer();
+            ModelInspector modelInspector;
 
-            options = new JsonSerializerOptions().ForFhir();
+            if (UseSourceGen)
+            {
+                modelInspector = ModelInfo.ModelInspector;
+            }
+            else
+            {
+                modelInspector = ModelInspector.ForAssembly(typeof(ModelInfo).Assembly);
+            }
+
+            XmlDeserializer = new FhirXmlPocoDeserializer(modelInspector);
+            JsonDeserializer = new FhirJsonPocoDeserializer(modelInspector);
+
+            options = new JsonSerializerOptions().ForFhir(modelInspector);
         }
 
         [Benchmark]

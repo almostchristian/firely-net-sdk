@@ -79,46 +79,6 @@ public class ModelInspectorGenerator : ISourceGenerator
                         throw new System.InvalidOperationException($"Cannot create PropertyMapping for [{prop}] for type [{declaringClass.Name}].");
                     }
 
-                    private static Hl7.Fhir.Introspection.PropertyMapping BuildProp<T, TProp>(
-                        string name,
-                        Hl7.Fhir.Introspection.ClassMapping declaringClass,
-                        global::System.Type implementingType,
-                        Hl7.Fhir.Introspection.ClassMapping propertyTypeMapping,
-                        System.Type[] fhirTypes,
-                        Hl7.Fhir.Specification.FhirRelease version,
-                        bool inSummary = default,
-                        bool isModifier = default,
-                        Hl7.Fhir.Introspection.ChoiceType? choice = default,
-                        Hl7.Fhir.Specification.XmlRepresentation? serializationHint = default,
-                        int order = 0,
-                        bool isCollection = false,
-                        bool isMandatoryElement = false,
-                        bool isPrimitive = false,
-                        bool representsValueElement = false,
-                        System.ComponentModel.DataAnnotations.ValidationAttribute[] validationAttributes = null,
-                        string fiveWs = null,
-                        string bindingName = null,
-                        System.Func<T, TProp> getter = null,
-                        System.Action<T, TProp> setter = null)
-                    {
-                        System.Func<object, object> getterTransformed = null;
-                        System.Action<object, object> setterTransformed = null;
-                        if (getter != null)
-                        {
-                            getterTransformed = (object instance) => (object)getter((T)instance);
-                        }
-
-                        if (setter != null)
-                        {
-                            setterTransformed = (object instance, object value) => setter((T)instance, (TProp)value);
-                        }
-
-                        return Hl7.Fhir.Introspection.PropertyMapping.Build(
-                            name, declaringClass, null, implementingType, propertyTypeMapping, fhirTypes, version,
-                            inSummary, isModifier, choice ?? Hl7.Fhir.Introspection.ChoiceType.None, serializationHint ?? Hl7.Fhir.Specification.XmlRepresentation.None, order, isCollection, isMandatoryElement, isPrimitive,
-                            representsValueElement, validationAttributes, fiveWs, bindingName, getterTransformed, setterTransformed);
-                    }
-
                 """);
 
             WriteMethod(code, "Hl7.Fhir.Introspection.ModelInspector", "GetModelInspector", code =>

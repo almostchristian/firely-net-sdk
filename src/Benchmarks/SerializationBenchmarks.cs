@@ -17,15 +17,29 @@ namespace Firely.Sdk.Benchmarks
         BaseFhirXmlPocoSerializer XmlSerializer;
 
 
+        [Params(false, true)]
+        public bool UseSourceGen { get; set; }
+
         [GlobalSetup]
         public void BenchmarkSetup()
         {
+            ModelInspector modelInspector;
+
+            if (UseSourceGen)
+            {
+                modelInspector = ModelInfo.ModelInspector;
+            }
+            else
+            {
+                modelInspector = ModelInspector.ForAssembly(typeof(ModelInfo).Assembly);
+            }
+
             var filename = Path.Combine("TestData", "fp-test-patient.json");
             var data = File.ReadAllText(filename);
             // For now, deserialize with the existing deserializer, until we have completed
             // the dynamicserializer too.
             Patient = FhirJsonNode.Parse(data).ToPoco<Patient>();
-            Options = new JsonSerializerOptions().ForFhir();
+            Options = new JsonSerializerOptions().ForFhir(modelInspector);
             XmlSerializer = new FhirXmlPocoSerializer();
         }
 
@@ -35,13 +49,13 @@ namespace Firely.Sdk.Benchmarks
             return JsonSerializer.Serialize(Patient, Options);
         }
 
-        [Benchmark]
+        //[Benchmark]
         public string XmlDictionarySerializer()
         {
             return SerializationUtil.WriteXmlToString(Patient, (o, w) => XmlSerializer.Serialize(o, w));
         }
 
-        [Benchmark]
+        //[Benchmark]
         public string TypedElementSerializerJson()
         {
             return Patient.ToTypedElement().ToJson();

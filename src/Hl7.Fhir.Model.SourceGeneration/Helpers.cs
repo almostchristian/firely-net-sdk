@@ -268,9 +268,9 @@ internal static class Helpers
 
                 // fhirElement values:
                 var propName = elementData!.ConstructorArguments[0].Value?.ToString();
-                var choice = elementData.NamedArguments.FirstOrDefault(x => x.Key == "Choice").Value.ToCSharpString() ?? "Hl7.Fhir.Introspection.ChoiceType.None";
+                var choice = elementData.NamedArguments.FirstOrDefault(x => x.Key == "Choice").Value.ToCSharpStringOrDefault("Hl7.Fhir.Introspection.ChoiceType.None");
                 var order = elementData.NamedArguments.FirstOrDefault(x => x.Key == "Order").Value.Value?.ToString() ?? "0";
-                var xmlRep = elementData.NamedArguments.FirstOrDefault(x => x.Key == "XmlSerialization").Value.ToCSharpString() ?? "Hl7.Fhir.Specification.XmlRepresentation.None";
+                var xmlRep = elementData.NamedArguments.FirstOrDefault(x => x.Key == "XmlSerialization").Value.ToCSharpStringOrDefault("Hl7.Fhir.Specification.XmlRepresentation.None");
                 var inSummary = elementData.NamedArguments.FirstOrDefault(x => x.Key == "InSummary").Value.Value?.ToString().ToLower() ?? "false";
                 var isModifier = elementData.NamedArguments.FirstOrDefault(x => x.Key == "IsModifier").Value.Value?.ToString().ToLower() ?? "false";
                 var fiveWs = elementData.NamedArguments.FirstOrDefault(x => x.Key == "FiveWs").Value.Value?.ToString() ?? string.Empty;
@@ -340,7 +340,7 @@ internal static class Helpers
                     propertyClassMappingIdx = idx;
                 }
 
-                if (choice != "null" && choice != "Hl7.Fhir.Introspection.ChoiceType.None" && property.TryGetAttribute("Hl7.Fhir.Validation.AllowedTypesAttribute", out var typesData))
+                if (choice != "Hl7.Fhir.Introspection.ChoiceType.None" && property.TryGetAttribute("Hl7.Fhir.Validation.AllowedTypesAttribute", out var typesData))
                 {
                     var typeArgs = typesData!.ConstructorArguments[0].Values.OfType<TypedConstant>().Select(x => x.Value);
                     fhirTypes = string.Join(", ", typeArgs.Select(t => $"typeof({t!.ToString()})"));
@@ -350,12 +350,13 @@ internal static class Helpers
 
                 var isPrimitive = property.Type.IsAllowedNativeTypeForDataTypeValue();
 
-                //code.AppendLine($"                CreateProp(cm, cm.NativeType.GetProperty({property.Name.SurroundWithQuotesOrNull()})),");
+                code.AppendLine($"                //CreateProp(cm, cm.NativeType.GetProperty({property.Name.SurroundWithQuotesOrNull()})),");
                 code.AppendLine(
                     $$"""
-                                    BuildProp<{{fhirType.ToDisplayString()}}, {{property.Type.ToDisplayString(NullableFlowState.None)}}>(
-                                       {{(propName ?? property.Name).SurroundWithQuotesOrNull()}},
-                                       cm, // ClassMapping for T
+                                    Hl7.Fhir.Introspection.PropertyMapping.Build(
+                                       {{propName.SurroundWithQuotesOrNull()}},
+                                       cm, // ClassMapping for T,
+                                       null, // We don't use the PropertyInfo
                                        typeof({{implementingType.ToDisplayString(NullableFlowState.None)}}),
                                        GeneratedModelInspectorContainer.AllClassMappings{{ModelInspectorGenerator.arrayAccess}}[{{propertyClassMappingIdx}}], // ClassMapping for {{propertyType.ToDisplayString()}}
                                        [{{fhirTypes}}], //fhirTypes
@@ -372,8 +373,8 @@ internal static class Helpers
                                        validationAttributes: [{{string.Join(", ", validationAttribs)}}],
                                        fiveWs: {{fiveWs.SurroundWithQuotesOrNull()}},
                                        bindingName: {{bindingName.SurroundWithQuotesOrNull()}},
-                                       getter: static i => i.{{property.Name}},
-                                       setter: static (i, v) => i.{{property.Name}} = v),
+                                       getter: static i => (({{fhirType.ToDisplayString()}})i).{{property.Name}},
+                                       setter: static (i, v) => (({{fhirType.ToDisplayString()}})i).{{property.Name}} = ({{property.Type.ToDisplayString(NullableFlowState.None)}})v),
                     """);
             }
         }
@@ -383,6 +384,11 @@ internal static class Helpers
                         ]),
             """);
         code.AppendLine($"");
+    }
+
+    private static string ToCSharpStringOrDefault(this TypedConstant value, string defaultValue)
+    {
+        return value.IsNull ? defaultValue : value.ToCSharpString();
     }
 
     private static bool IsAllowedNativeTypeForDataTypeValue(this ITypeSymbol type)
