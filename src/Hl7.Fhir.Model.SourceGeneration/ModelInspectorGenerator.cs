@@ -326,7 +326,8 @@ public class ModelInspectorGenerator : ISourceGenerator
                     asm.GlobalNamespace.TraverseNamespace(fhirTypes, context.CancellationToken);
                 }
 
-                if (modelMetadata.ReadSinceProperty() is FhirRelease r)
+                if (modelMetadata.ReadSinceProperty() is FhirRelease r &&
+                    (!scannedRelease.HasValue || scannedRelease.Value < r))
                 {
                     scannedRelease = r;
                 }

@@ -94,6 +94,28 @@ internal static class Helpers
         return false;
     }
 
+    public static bool TryGetVersionedAttribute(this ISymbol symbol, string attributeTypeName, FhirRelease fhirRelease, out AttributeData? attributeData)
+    {
+        var matches = symbol.GetAttributes()
+            .Where(x => x.AttributeClass?.ToDisplayString() == attributeTypeName)
+            .Select(attrib => (attrib, since: attrib.ReadSinceProperty()))
+            .OrderByDescending(x => x.since)
+            .ToList();
+
+        foreach (var match in matches)
+        {
+            var notMappedSince = match.since;
+            if (notMappedSince == null || notMappedSince <= fhirRelease)
+            {
+                attributeData = match.attrib;
+                return true;
+            }
+        }
+
+        attributeData = null;
+        return false;
+    }
+
     internal static void TraverseNamespace(this INamespaceSymbol ns, HashSet<ITypeSymbol> allTypes, CancellationToken cancellationToken)
     {
         foreach (var type in ns.GetTypeMembers())
@@ -229,7 +251,7 @@ internal static class Helpers
         var enumType = classIndex.Keys.FirstOrDefault(x => x.ToDisplayString() == "System.Enum") as ITypeSymbol;
         foreach (var property in properties)
         {
-            if (property.TryGetAttribute("Hl7.Fhir.Introspection.FhirElementAttribute", out var elementData))
+            if (property.TryGetVersionedAttribute("Hl7.Fhir.Introspection.FhirElementAttribute", fhirRelease, out var elementData))
             {
                 if (elementData.ReadSinceProperty() is FhirRelease since)
                 {
@@ -239,13 +261,9 @@ internal static class Helpers
                     }
                 }
 
-                if (property.TryGetAttribute("Hl7.Fhir.Introspection.NotMappedAttribute", out var notMappedData))
+                if (property.TryGetVersionedAttribute("Hl7.Fhir.Introspection.NotMappedAttribute", fhirRelease, out var notMappedData))
                 {
-                    var notMappedSince = notMappedData.ReadSinceProperty();
-                    if (notMappedSince == null || notMappedSince <= fhirRelease)
-                    {
-                        continue;
-                    }
+                    continue;
                 }
 
                 // fhirElement values:
@@ -283,14 +301,14 @@ internal static class Helpers
                 }
 
                 List<string> validationAttribs = [$"new Hl7.Fhir.Introspection.FhirElementAttribute({propName.SurroundWithQuotesOrNull()})"];
-                foreach (var valAttrib in property.GetAttributes().Where(x => x.ConstructorArguments.Length == 0 && x.NamedArguments.Length == 0 && x.AttributeClass?.BaseType?.Name == "System.ComponentModel.DataAnnotations.ValidationAttribute"))
+                foreach (var valAttrib in property.GetAttributes().Where(x => x.ConstructorArguments.Length == 0 && x.NamedArguments.Length == 0 && x.AttributeClass?.BaseType?.ToDisplayString() == "System.ComponentModel.DataAnnotations.ValidationAttribute"))
                 {
                     // todo: use singleton instance?
-                    validationAttribs.Add($"new {valAttrib.AttributeClass!.Name}()");
+                    validationAttribs.Add($"new {valAttrib.AttributeClass.ToDisplayString()}()");
                 }
 
                 string? bindingName = null;
-                if (property.TryGetAttribute("Hl7.Fhir.Introspection.BindingAttribute", out var bindingData))
+                if (property.TryGetVersionedAttribute("Hl7.Fhir.Introspection.BindingAttribute", fhirRelease, out var bindingData))
                 {
                     bindingName = bindingData!.ConstructorArguments[0].Value?.ToString();
                 }
@@ -303,22 +321,31 @@ internal static class Helpers
                     validationAttribs.Add($"new Hl7.Fhir.Validation.CardinalityAttribute {{ {string.Join(", ", cardinalityData.NamedArguments.Select(x => $"{x.Key} = {x.Value.Value.ToString()}"))} }}");
                 }
 
-                var fhirTypes = string.Empty;
-                if (choice != "Hl7.Fhir.Introspection.ChoiceType.None" && property.TryGetAttribute("Hl7.Fhir.Validation.AllowedTypesAttribute", out var typesData))
+                var fhirTypes = $"typeof({propertyType.ToDisplayString(NullableFlowState.None)})";
+                
+                if (property.TryGetVersionedAttribute("Hl7.Fhir.Introspection.DeclaredTypeAttribute", fhirRelease, out var declaredTypeData))
+                {
+                    var t = (INamedTypeSymbol)declaredTypeData!.NamedArguments.Single(x => x.Key == "Type").Value.Value!;
+                    fhirTypes = $"typeof({t.ToDisplayString(NullableFlowState.None)})";
+                    propertyType = t;
+                }
+
+                int propertyClassMappingIdx = -1;
+                if (classIndex.TryGetValue(propertyType, out var idx))
+                {
+                    propertyClassMappingIdx = idx;
+                }
+                else if (classIndex.TryGetValue(implementingType, out idx))
+                {
+                    propertyClassMappingIdx = idx;
+                }
+
+                if (choice != "null" && choice != "Hl7.Fhir.Introspection.ChoiceType.None" && property.TryGetAttribute("Hl7.Fhir.Validation.AllowedTypesAttribute", out var typesData))
                 {
                     var typeArgs = typesData!.ConstructorArguments[0].Values.OfType<TypedConstant>().Select(x => x.Value);
                     fhirTypes = string.Join(", ", typeArgs.Select(t => $"typeof({t!.ToString()})"));
 
                     validationAttribs.Add($"new Hl7.Fhir.Validation.AllowedTypesAttribute({fhirTypes})");
-                }
-                else if (property.TryGetAttribute("Hl7.Fhir.Introspection.DeclaredTypeAttribute", out var declaredTypeData))
-                {
-                    var t = declaredTypeData!.NamedArguments.Single(x => x.Key == "Type").Value.Value;
-                    fhirTypes = $"typeof({t!.ToString()})";
-                }
-                else
-                {
-                    fhirTypes = $"typeof({propertyType.ToDisplayString(NullableFlowState.None)})";
                 }
 
                 var isPrimitive = property.Type.IsAllowedNativeTypeForDataTypeValue();
@@ -330,7 +357,7 @@ internal static class Helpers
                                        {{(propName ?? property.Name).SurroundWithQuotesOrNull()}},
                                        cm, // ClassMapping for T
                                        typeof({{implementingType.ToDisplayString(NullableFlowState.None)}}),
-                                       GeneratedModelInspectorContainer.AllClassMappings{{ModelInspectorGenerator.arrayAccess}}[{{(classIndex.TryGetValue(propertyType, out var idx) ? idx : -1)}}], // ClassMapping for TProp
+                                       GeneratedModelInspectorContainer.AllClassMappings{{ModelInspectorGenerator.arrayAccess}}[{{propertyClassMappingIdx}}], // ClassMapping for {{propertyType.ToDisplayString()}}
                                        [{{fhirTypes}}], //fhirTypes
                                        FhirRelease,
                                        inSummary: {{inSummary}},
