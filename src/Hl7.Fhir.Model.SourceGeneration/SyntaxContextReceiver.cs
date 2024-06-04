@@ -63,18 +63,36 @@ internal sealed class SyntaxContextReceiver : ISyntaxContextReceiver
 
         var arg = attributeSyntax!.ConstructorArguments;
 
+        bool hasMode = false;
         ModelInspectorGenerationTypeInclusionMode mode = ModelInspectorGenerationTypeInclusionMode.Default;
         if (arg.Length > 0 && arg[0].Kind != TypedConstantKind.Type)
         {
             Enum.TryParse(arg[0].Value!.ToString(), out mode);
+            hasMode = true;
         }
 
-        var types = arg
-            .Select(x => x.Value)
-            .OfType<INamedTypeSymbol>()
-            .Distinct(SymbolEqualityComparer.Default)
-            .OfType<INamedTypeSymbol>()
-            .ToArray();
+        INamedTypeSymbol[] types;
+        if (hasMode && arg.Length == 2 && arg[1].Kind == TypedConstantKind.Array)
+        {
+            types = arg[1].Values
+                .Select(x => x.Value)
+                .OfType<INamedTypeSymbol>()
+                .Distinct(SymbolEqualityComparer.Default)
+                .OfType<INamedTypeSymbol>()
+                .ToArray();
+        }
+        else
+        {
+            types = arg
+                .Skip(hasMode ? 1 : 0)
+                .Select(x => x.Value)
+                .OfType<INamedTypeSymbol>()
+                .Distinct(SymbolEqualityComparer.Default)
+                .OfType<INamedTypeSymbol>()
+                .ToArray();
+        }
+
+        
         return (typeSymbol, methodSymbol, types, mode);
     }
 }

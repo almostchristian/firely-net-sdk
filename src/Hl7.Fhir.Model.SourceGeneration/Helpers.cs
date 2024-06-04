@@ -373,9 +373,13 @@ internal static class Helpers
                                        validationAttributes: [{{string.Join(", ", validationAttribs)}}],
                                        fiveWs: {{fiveWs.SurroundWithQuotesOrNull()}},
                                        bindingName: {{bindingName.SurroundWithQuotesOrNull()}},
-                                       getter: static i => (({{fhirType.ToDisplayString()}})i).{{property.Name}},
-                                       setter: static (i, v) => (({{fhirType.ToDisplayString()}})i).{{property.Name}} = ({{property.Type.ToDisplayString(NullableFlowState.None)}})v),
+                                       getter: static i => System.Runtime.CompilerServices.Unsafe.As<{{fhirType.ToDisplayString()}}>(i).{{property.Name}},
+                                       setter: static (i, v) => System.Runtime.CompilerServices.Unsafe.As<{{fhirType.ToDisplayString()}}>(i).{{property.Name}} = {{GetCastedSetterValue()}}),
                     """);
+
+                string GetCastedSetterValue() => property.Type.IsValueType ?
+                    $"System.Runtime.CompilerServices.Unsafe.Unbox<{property.Type.GetNonNullableSymbol().ToDisplayString()}>(v)" :
+                    $"System.Runtime.CompilerServices.Unsafe.As<{property.Type.ToDisplayString(NullableFlowState.None)}>(v)";
             }
         }
 
@@ -384,6 +388,16 @@ internal static class Helpers
                         ]),
             """);
         code.AppendLine($"");
+    }
+
+    private static ITypeSymbol GetNonNullableSymbol(this ITypeSymbol type)
+    {
+        if (type is INamedTypeSymbol nt && nt.Arity == 1 && nt.ToDisplayString().EndsWith("?"))
+        {
+            return nt.TypeArguments[0];
+        }
+
+        return type;
     }
 
     private static string ToCSharpStringOrDefault(this TypedConstant value, string defaultValue)
