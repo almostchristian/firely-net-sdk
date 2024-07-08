@@ -188,17 +188,43 @@ internal static class Helpers
     {
         if (netType is IArrayTypeSymbol arrayType)
         {
-            code.AppendLine($"          Hl7.Fhir.Introspection.ClassMapping.Build(\"Net.{arrayType.ElementType.Name}[]\", typeof({netType.ToDisplayString()}), FhirRelease, isPrimitive: true),");
+            code.AppendLine(
+                $$"""
+                         new Hl7.Fhir.Introspection.ClassMapping
+                         {
+                            Name = "Net.{{arrayType.ElementType.Name}}[]",
+                            NativeType = typeof({{netType.ToDisplayString()}}),
+                            Release = FhirRelease,
+                            IsPrimitive = true,
+                         },
+                """);
         }
         else
         {
-            code.AppendLine($"          Hl7.Fhir.Introspection.ClassMapping.Build(\"Net.{netType.Name}\", typeof({netType.ToDisplayString()}), FhirRelease, isPrimitive: true),");
+            code.AppendLine(
+                $$"""
+                         new Hl7.Fhir.Introspection.ClassMapping
+                         {
+                            Name = "Net.{{netType.Name}}",
+                            NativeType = typeof({{netType.ToDisplayString()}}),
+                            Release = FhirRelease,
+                            IsPrimitive = true,
+                         },
+                """);
         }
     }
 
     public static void WriteCqlType(this ITypeSymbol cqlType, StringBuilder code, AttributeData data)
     {
-        code.AppendLine($"          Hl7.Fhir.Introspection.ClassMapping.Build(\"System.{cqlType.Name}\", typeof({cqlType.ToDisplayString()}), FhirRelease),");
+        code.AppendLine(
+            $$"""
+                     new Hl7.Fhir.Introspection.ClassMapping
+                     {
+                        Name = "System.{{cqlType.Name}}",
+                        NativeType = typeof({{cqlType.ToDisplayString()}}),
+                        Release = FhirRelease,
+                     },
+            """);
     }
 
     public static void WriteFhirType(this ITypeSymbol fhirType, StringBuilder code, AttributeData data, IReadOnlyDictionary<ISymbol?, int> classIndex, FhirRelease fhirRelease)
@@ -222,20 +248,8 @@ internal static class Helpers
         var isBindable = fhirType.TryGetAttribute("Hl7.Fhir.Introspection.BindableAttribute", out var bindableAttribute);
         code.Append(
             $$"""
-                    Hl7.Fhir.Introspection.ClassMapping.Build(
-                        {{name.SurroundWithQuotesOrNull()}},
-                        typeof({{fhirType.ToDisplayString()}}),
-                        FhirRelease,
-                        isResource: {{(isResource ?? "false")}},
-                        isCodeOfT: {{isCodeOfT.ToString().ToLower()}},
-                        isFhirPrimitive: {{isFhirPrimitive.ToString().ToLower()}},
-                        isBackboneType: {{isBackbone.ToString().ToLower()}},
-                        definitionPath: {{definitionPath.SurroundWithQuotesOrNull()}},
-                        isBindable: {{isBindable.ToString().ToLower()}},
-                        canonical: {{canonical.SurroundWithQuotesOrNull()}},
-                        validationAttributes: {{(hasValidationAttributes ? $"GetValidationAttributes(typeof({fhirType.ToDisplayString()}), FhirRelease).ToArray(), // this can be optimized further" : "[], // it appears this is always empty")}}
-                        propertyMapFactory: cm =>
-                        [
+                  new Hl7.Fhir.Introspection.ClassMapping(cm =>
+                  [
 
             """);
 
@@ -353,28 +367,29 @@ internal static class Helpers
                 code.AppendLine($"                //CreateProp(cm, cm.NativeType.GetProperty({property.Name.SurroundWithQuotesOrNull()})),");
                 code.AppendLine(
                     $$"""
-                                    Hl7.Fhir.Introspection.PropertyMapping.Build(
-                                       {{propName.SurroundWithQuotesOrNull()}},
-                                       cm, // ClassMapping for T,
-                                       null, // We don't use the PropertyInfo
-                                       typeof({{implementingType.ToDisplayString(NullableFlowState.None)}}),
-                                       GeneratedModelInspectorContainer.AllClassMappings{{ModelInspectorGenerator.arrayAccess}}[{{propertyClassMappingIdx}}], // ClassMapping for {{propertyType.ToDisplayString()}}
-                                       [{{fhirTypes}}], //fhirTypes
-                                       FhirRelease,
-                                       inSummary: {{inSummary}},
-                                       isModifier: {{isModifier}},
-                                       choice: {{choice}},
-                                       serializationHint: {{xmlRep}},
-                                       order: {{order}},
-                                       isCollection: {{isCollection.ToString().ToLower()}},
-                                       isMandatoryElement: {{isMandatory.ToString().ToLower()}},
-                                       isPrimitive: {{isPrimitive.ToString().ToLower()}},
-                                       representsValueElement: {{(isPrimitive && elementData.IsPrimitiveValueElement()).ToString().ToLower()}},
-                                       validationAttributes: [{{string.Join(", ", validationAttribs)}}],
-                                       fiveWs: {{fiveWs.SurroundWithQuotesOrNull()}},
-                                       bindingName: {{bindingName.SurroundWithQuotesOrNull()}},
+                                    new Hl7.Fhir.Introspection.PropertyMapping(
                                        getter: static i => System.Runtime.CompilerServices.Unsafe.As<{{fhirType.ToDisplayString()}}>(i).{{property.Name}},
-                                       setter: static (i, v) => System.Runtime.CompilerServices.Unsafe.As<{{fhirType.ToDisplayString()}}>(i).{{property.Name}} = {{GetCastedSetterValue()}}),
+                                       setter: static (i, v) => System.Runtime.CompilerServices.Unsafe.As<{{fhirType.ToDisplayString()}}>(i).{{property.Name}} = {{GetCastedSetterValue()}})
+                                    {
+                                       Name = {{propName.SurroundWithQuotesOrNull()}},
+                                       DeclaringClass = cm, // ClassMapping for T,
+                                       ImplementingType = typeof({{implementingType.ToDisplayString(NullableFlowState.None)}}),
+                                       PropertyTypeMapping = GeneratedModelInspectorContainer.AllClassMappings{{ModelInspectorGenerator.arrayAccess}}[{{propertyClassMappingIdx}}], // ClassMapping for {{propertyType.ToDisplayString()}}
+                                       FhirType = [{{fhirTypes}}],
+                                       Release = FhirRelease,
+                                       InSummary = {{inSummary}},
+                                       IsModifier = {{isModifier}},
+                                       Choice = {{choice}},
+                                       SerializationHint = {{xmlRep}},
+                                       Order = {{order}},
+                                       IsCollection = {{isCollection.ToString().ToLower()}},
+                                       IsMandatoryElement = {{isMandatory.ToString().ToLower()}},
+                                       IsPrimitive = {{isPrimitive.ToString().ToLower()}},
+                                       RepresentsValueElement = {{(isPrimitive && elementData.IsPrimitiveValueElement()).ToString().ToLower()}},
+                                       ValidationAttributes = [{{string.Join(", ", validationAttribs)}}],
+                                       FiveWs = {{fiveWs.SurroundWithQuotesOrNull()}},
+                                       BindingName = {{bindingName.SurroundWithQuotesOrNull()}},
+                                    },
                     """);
 
                 string GetCastedSetterValue() => property.Type.IsValueType ?
@@ -385,7 +400,20 @@ internal static class Helpers
 
         code.Append(
             $$"""
-                        ]),
+                  ])
+                  {
+                     Name = {{name.SurroundWithQuotesOrNull()}},
+                     NativeType = typeof({{fhirType.ToDisplayString()}}),
+                     Release = FhirRelease,
+                     IsResource = {{(isResource ?? "false")}},
+                     IsCodeOfT = {{isCodeOfT.ToString().ToLower()}},
+                     IsFhirPrimitive = {{isFhirPrimitive.ToString().ToLower()}},
+                     IsBackboneType = {{isBackbone.ToString().ToLower()}},
+                     DefinitionPath = {{definitionPath.SurroundWithQuotesOrNull()}},
+                     IsBindable = {{isBindable.ToString().ToLower()}},
+                     Canonical = {{canonical.SurroundWithQuotesOrNull()}},
+                     ValidationAttributes = {{(hasValidationAttributes ? $"GetValidationAttributes(typeof({fhirType.ToDisplayString()}), FhirRelease).ToArray(), // this can be optimized further" : "[], // it appears this is always empty")}}
+                  },
             """);
         code.AppendLine($"");
     }

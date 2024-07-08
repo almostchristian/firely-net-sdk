@@ -27,97 +27,56 @@ namespace Hl7.Fhir.Introspection
     [System.Diagnostics.DebuggerDisplay(@"\{Name={Name} ElementType={ImplementingType.Name}}")]
     public class PropertyMapping : IElementDefinitionSummary
     {
-        // no public constructors
-        private PropertyMapping(
-            string name,
-            ClassMapping declaringClass,
-            PropertyInfo pi,
-            Type implementingType,
-            ClassMapping propertyTypeMapping,
-            Type[] fhirTypes,
-            FhirRelease version,
-            Func<object, object?>? getter = null,
-            Action<object, object?>? setter = null)
+        private PropertyMapping(PropertyInfo nativeProperty)
         {
-            Name = name;
-            NativeProperty = pi;
-            Release = version;
-            ImplementingType = implementingType;
-            FhirType = fhirTypes;
-            PropertyTypeMapping = propertyTypeMapping;
-            DeclaringClass = declaringClass;
-            FiveWs = string.Empty;
-            ValidationAttributes = [];
-#if NET6_0_OR_GREATER
-            if (getter != null)
-            {
-                _getter = new Lazy<Func<object, object?>>(getter);
-            }
-#else
-            if (getter != null)
-            {
-                _getter = new Lazy<Func<object, object?>>(() => getter);
-            }
-#endif
-            else
-            {
-                _getter = new Lazy<Func<object, object?>>(() => pi.GetValueGetter());
-            }
+            _nativeProperty = nativeProperty;
+        }
 
-#if NET6_0_OR_GREATER
-            if (setter != null)
-            {
-                _setter = new Lazy<Action<object, object?>>(setter);
-            }
-#else
-            if (setter != null)
-            {
-                _setter = new Lazy<Action<object, object?>>(() => setter);
-            }
-#endif
-            else
-            {
-                _setter = new Lazy<Action<object, object?>>(() => pi.GetValueSetter());
-            }
+        public PropertyMapping(
+            Func<object, object?> getter,
+            Action<object, object?> setter)
+        {
+            _getter = getter;
+            _setter = setter;
         }
 
         /// <summary>
         /// The name of the element in the FHIR specification.
         /// </summary>
-        public string Name { get; internal set; }
+        public required string Name { get; init; }
 
         /// <summary>
         /// The ClassMapping for the type this property is a member of.
         /// </summary>
-        public ClassMapping DeclaringClass { get; internal set; }
+        public required ClassMapping DeclaringClass { get; init; }
 
         /// <summary>
         /// Whether the element can repeat.
         /// </summary>
-        public bool IsCollection { get; internal set; }
+        public bool IsCollection { get; init; }
 
         /// <summary>
         /// The element is of an atomic .NET type, not a FHIR generated POCO.
         /// </summary>
-        public bool IsPrimitive { get; private set; }
+        public bool IsPrimitive { get; init; }
 
         /// <summary>
         /// The element is a primitive (<seealso cref="IsPrimitive"/>) and 
         /// represents the primitive `value` attribute/property in the FHIR serialization.
         /// </summary>
-        public bool RepresentsValueElement { get; private set; }
+        public bool RepresentsValueElement { get; init; }
 
         /// <summary>
         /// Whether the element appears in _summary 
         /// (see https://www.hl7.org/fhir/search.html#summary)
         /// </summary>
-        public bool InSummary { get; private set; }
+        public bool InSummary { get; init; }
 
         /// <summary>
         /// If this modifies the meaning of other elements
         /// (see https://www.hl7.org/fhir/conformance-rules.html#isModifier)
         /// </summary>
-        public bool IsModifier { get; private set; }
+        public bool IsModifier { get; init; }
 
         /// <summary>
         /// Five W's mappings of the element.
@@ -125,12 +84,12 @@ namespace Hl7.Fhir.Introspection
         /// <c>FiveWs</c> pattern from http://hl7.org/fhir/fivews.html. Choice elements are spelled with the
         /// [x] suffix, like <c>done[x]</c>. </remarks>
         /// </summary>
-        public string FiveWs { get; private set; }
+        public required string FiveWs { get; init; }
 
         /// <summary>
         /// Whether the element has a cardinality higher than 0.
         /// </summary>
-        public bool IsMandatoryElement { get; private set; }
+        public bool IsMandatoryElement { get; init; }
 
         /// <summary>
         /// The native type of the element.
@@ -138,18 +97,18 @@ namespace Hl7.Fhir.Introspection
         /// <remarks>If the element is a collection or is nullable, this reflects the
         /// collection item or the type that is made nullable respectively.
         /// </remarks>
-        public Type ImplementingType { get; private set; }
+        public required Type ImplementingType { get; init; }
 
         /// <summary>
         /// The numeric order of the element (relevant for the XML serialization, which
         /// needs to be in order).
         /// </summary>
-        public int Order { get; private set; }
+        public int Order { get; init; }
 
         /// <summary>
         /// How this element is represented in the XML serialization.
         /// </summary>
-        public XmlRepresentation SerializationHint { get; private set; }
+        public XmlRepresentation SerializationHint { get; init; }
 
         /// <summary>
         /// Specifies whether this element contains a choice (either a choice element or a
@@ -158,7 +117,7 @@ namespace Hl7.Fhir.Introspection
         /// <remarks>In the case of a DataChoice, these elements have names ending in [x] in 
         /// the StructureDefinition and allow a (possibly restricted) set of types to be used. 
         /// These are reflected in the <see cref="FhirType"/> property.</remarks>
-        public ChoiceType Choice { get; private set; }
+        public ChoiceType Choice { get; init; }
 
         /// <summary>
         /// The list of possible FHIR types for this element, listed as the representative .NET types. 
@@ -171,35 +130,39 @@ namespace Hl7.Fhir.Introspection
         /// it the property type does not represent FHIR metadata, it is overridden using
         /// the [DeclaredType] attribute.
         /// </remark>
-        public Type[] FhirType { get; private set; }
+        public required Type[] FhirType { get; init; }
 
         /// <summary>
         /// The <see cref="ClassMapping" /> that represents the type of this property.
         /// </summary>
         /// <remarks>This is effectively the ClassMapping for the <see cref="ImplementingType" /> unless a
         /// <see cref="DeclaredTypeAttribute" /> specifies otherwise.</remarks>
-        public ClassMapping PropertyTypeMapping { get; private set; }
+        public required ClassMapping PropertyTypeMapping { get; init; }
 
         /// <summary>
         /// The collection of zero or more <see cref="ValidationAttribute"/> (or subclasses) declared
         /// on this property.
         /// </summary>
-        public ValidationAttribute[] ValidationAttributes { get; private set; } = Array.Empty<ValidationAttribute>();
+        public ValidationAttribute[] ValidationAttributes { get; init; } = Array.Empty<ValidationAttribute>();
+
+        private PropertyInfo? _nativeProperty;
 
         /// <summary>
         /// The original <see cref="PropertyInfo"/> the metadata was obtained from.
         /// </summary>
-        public readonly PropertyInfo NativeProperty;
+        public PropertyInfo NativeProperty => _nativeProperty ?? LazyInitializer.EnsureInitialized(
+            ref _nativeProperty,
+            () => Array.Find(ImplementingType.GetProperties(BindingFlags.Public | BindingFlags.Instance), x => x.GetCustomAttribute<FhirElementAttribute>()?.Name == Name)!)!;
 
         /// <summary>
         /// The release of FHIR for which the metadata was extracted from the property.
         /// </summary>
-        public readonly FhirRelease Release;
+        public required FhirRelease Release { get; init; }
 
         /// <summary>
         /// For a bound element, this is the name of the binding.
         /// </summary>
-        public string? BindingName { get; private set; }
+        public string? BindingName { get; init; }
 
         /// <summary>
         /// Inspects the given PropertyInfo, extracting metadata from its attributes and creating a new <see cref="PropertyMapping"/>.
@@ -254,8 +217,14 @@ namespace Hl7.Fhir.Introspection
 
             var isPrimitive = isAllowedNativeTypeForDataTypeValue(implementingType);
 
-            result = new PropertyMapping(elementAttr.Name, declaringClass, prop, implementingType, propertyTypeMapping!, fhirTypes, release)
+            result = new PropertyMapping(prop)
             {
+                Name = elementAttr.Name,
+                DeclaringClass = declaringClass,
+                ImplementingType = implementingType,
+                PropertyTypeMapping = propertyTypeMapping,
+                FhirType = fhirTypes,
+                Release = release,
                 InSummary = elementAttr.InSummary,
                 IsModifier = elementAttr.IsModifier,
                 Choice = elementAttr.Choice,
@@ -271,46 +240,6 @@ namespace Hl7.Fhir.Introspection
             };
 
             return true;
-        }
-
-        public static PropertyMapping Build(
-            string name,
-            ClassMapping declaringClass,
-            PropertyInfo nativeProperty,
-            Type implementingType,
-            ClassMapping propertyTypeMapping,
-            Type[] fhirTypes,
-            FhirRelease fhirRelease,
-            bool inSummary = default,
-            bool isModifier = default,
-            ChoiceType choice = default,
-            XmlRepresentation serializationHint = default,
-            int order = 0,
-            bool isCollection = false,
-            bool isMandatoryElement = false,
-            bool isPrimitive = false,
-            bool representsValueElement = false,
-            ValidationAttribute[]? validationAttributes = null,
-            string fiveWs = null!,
-            string? bindingName = null,
-            Func<object, object?>? getter = null,
-            Action<object, object?>? setter = null)
-        {
-            return new PropertyMapping(name, declaringClass, nativeProperty, implementingType, propertyTypeMapping!, fhirTypes, fhirRelease, getter, setter)
-            {
-                InSummary = inSummary,
-                IsModifier = isModifier,
-                Choice = choice,
-                SerializationHint = serializationHint,
-                Order = order,
-                IsCollection = isCollection,
-                IsMandatoryElement = isMandatoryElement,
-                IsPrimitive = isPrimitive,
-                RepresentsValueElement = representsValueElement,
-                ValidationAttributes = validationAttributes ?? [],
-                FiveWs = fiveWs,
-                BindingName = bindingName,
-            };
         }
 
         /// <summary>
@@ -355,17 +284,22 @@ namespace Hl7.Fhir.Introspection
         /// <summary>
         /// Given an instance of the parent class, gets the value for this property.
         /// </summary>
-        public object? GetValue(object instance) => _getter.Value(instance);
+        public object? GetValue(object instance) => ensureGetter()(instance);
 
-        private readonly Lazy<Func<object, object?>> _getter;
+        private Func<object, object?>? _getter;
+
+        private Func<object, object?> ensureGetter()
+            => _getter ?? LazyInitializer.EnsureInitialized(ref _getter, NativeProperty.GetValueGetter)!;
 
         /// <summary>
         /// Given an instance of the parent class, sets the value for this property.
         /// </summary>
-        public void SetValue(object instance, object? value) =>
-            _setter.Value(instance, value);
+        public void SetValue(object instance, object? value) => ensureSetter()(instance, value);
 
-        private readonly Lazy<Action<object, object?>> _setter;
+        private Action<object, object?>? _setter;
+
+        private Action<object, object?> ensureSetter()
+            => _setter ?? LazyInitializer.EnsureInitialized(ref _setter, () => NativeProperty.GetValueSetter())!;
 
         #region IElementDefinitionSummary members
         string IElementDefinitionSummary.ElementName => this.Name;

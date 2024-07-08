@@ -83,7 +83,7 @@ public class ModelInspectorGenerator : ISourceGenerator
 
             WriteMethod(code, "Hl7.Fhir.Introspection.ModelInspector", "GetModelInspector", code =>
             {
-                code.AppendLine($"          new Hl7.Fhir.Introspection.ModelInspector(Hl7.Fhir.Model.ModelInfo.Version, AllClassMappings{arrayAccess}, AllEnumMappings{arrayAccess})");
+                code.AppendLine($"          Hl7.Fhir.Introspection.ModelInspector.ForPredefinedMappings(Hl7.Fhir.Model.ModelInfo.Version, AllClassMappings{arrayAccess}, AllEnumMappings{arrayAccess})");
             });
 
             WriteMethod(code, "System.Type[]", "AllTypes", code =>
@@ -152,7 +152,7 @@ public class ModelInspectorGenerator : ISourceGenerator
                     {
                         WriteMethod(code, "Hl7.Fhir.Introspection.ModelInspector", $"Get{methodSymbol.Name}ModelInspector", code =>
                         {
-                            code.AppendLine($"         new Hl7.Fhir.Introspection.ModelInspector(Hl7.Fhir.Model.ModelInfo.Version, {methodSymbol.Name}ClassMappings{arrayAccess}, {methodSymbol.Name}EnumMappings{arrayAccess})");
+                            code.AppendLine($"         Hl7.Fhir.Introspection.ModelInspector.ForPredefinedMappings(Hl7.Fhir.Model.ModelInfo.Version, {methodSymbol.Name}ClassMappings{arrayAccess}, {methodSymbol.Name}EnumMappings{arrayAccess})");
                         });
 
                         WriteMethod(code, "System.Type[]", $"{methodSymbol.Name}Types", code =>

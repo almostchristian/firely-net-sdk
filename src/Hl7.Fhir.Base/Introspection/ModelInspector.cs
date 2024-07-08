@@ -118,32 +118,21 @@ namespace Hl7.Fhir.Introspection
         /// <typeparam name="T"></typeparam>
         public static ModelInspector ForType<T>() where T : Resource => ForType(typeof(T));
 
-        public ModelInspector(string fhirVersion, IEnumerable<ClassMapping> classMappings, IEnumerable<EnumMapping> enumMappings)
+        /// <summary>
+        /// Returns a fully configured <see cref="ModelInspector"/> with the
+        /// FHIR metadata contents defined in <paramref name="classMappings"/> and <paramref name="enumMappings"/>.
+        /// </summary>
+        public static ModelInspector ForPredefinedMappings(string fhirVersion, IEnumerable<ClassMapping> classMappings, IEnumerable<EnumMapping> enumMappings)
         {
-            _classMappings = new ClassMappingCollection(classMappings);
-            _enumMappings = new EnumMappingCollection(enumMappings);
-            FhirVersion = fhirVersion;
-            FhirRelease = FhirReleaseParser.Parse(fhirVersion);
-        }
-
-        public static ModelInspector ForTypes(string version, ReadOnlySpan<Type> types)
-        {
-            var fhirRelease = FhirReleaseParser.Parse(version);
-            var classMappings = new List<ClassMapping>(types.Length);
-            var enumMappings = new List<EnumMapping>(types.Length);
-            foreach (var type in types)
+            var inspector = new ModelInspector(FhirReleaseParser.Parse(fhirVersion))
             {
-                if (!type.IsEnum && ClassMapping.TryCreate(type, out var classMapping, fhirRelease))
-                {
-                    classMappings.Add(classMapping);
-                }
-                else if (type.IsEnum && EnumMapping.TryCreate(type, out var enumMapping, fhirRelease))
-                {
-                    enumMappings.Add(enumMapping);
-                }
-            }
+                FhirVersion = fhirVersion,
+            };
 
-            return new ModelInspector(version, classMappings, enumMappings);
+            inspector._classMappings.AddRange(classMappings);
+            inspector._enumMappings.AddRange(enumMappings);
+
+            return inspector;
         }
 
         /// <summary>

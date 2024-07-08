@@ -19,6 +19,21 @@ namespace System.Runtime.CompilerServices
     internal static class IsExternalInit
     {
     }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [AttributeUsage(AttributeTargets.All, Inherited = false, AllowMultiple = true)]
+    internal sealed class RequiredMemberAttribute : Attribute
+    {
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [AttributeUsage(AttributeTargets.All, Inherited = false, AllowMultiple = true)]
+    internal sealed class CompilerFeatureRequiredAttribute : Attribute
+    {
+        public CompilerFeatureRequiredAttribute(string featureName)
+        {
+        }
+    }
 }
 
 #endif

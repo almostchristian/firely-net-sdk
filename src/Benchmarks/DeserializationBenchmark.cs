@@ -35,7 +35,7 @@ namespace Firely.Sdk.Benchmarks
 
             if (UseSourceGen)
             {
-                modelInspector = ModelInfo.ModelInspector;
+                modelInspector = ModelInspector.ForPredefinedMappings(ModelInfo.Version, ModelInspectorBenchmarks.ClassMappingsAllResources(), ModelInspectorBenchmarks.EnumMappingsAllResources());
             }
             else
             {

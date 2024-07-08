@@ -16,7 +16,7 @@ public partial class ModelInspectorBenchmarks
     [GenerateModelInspector(ModelInspectorGenerationTypeInclusionMode.IncludeAllCoreFhirTypes, typeof(CapabilityStatement), typeof(Appointment), typeof(OperationDefinition))]
     public static partial ClassMapping[] ClassMappings4Resources();
 
-    [GenerateModelInspector(ModelInspectorGenerationTypeInclusionMode.IncludeAllCoreFhirTypes, typeof(CapabilityStatement), typeof(Appointment), typeof(OperationDefinition))]
+    [GenerateModelInspector(ModelInspectorGenerationTypeInclusionMode.IncludeAllCoreFhirTypes, typeof(CapabilityStatement), typeof(Appointment), typeof(Annotation), typeof(VirtualServiceDetail), typeof(OperationDefinition))]
     public static partial EnumMapping[] EnumMappings4Resources();
 
     [GenerateModelInspector(ModelInspectorGenerationTypeInclusionMode.Default, typeof(FhirString), typeof(CapabilityStatement), typeof(Patient))]
@@ -43,8 +43,8 @@ public partial class ModelInspectorBenchmarks
         inspector = SourceGenMappingsAllResources();
         Console.WriteLine($"SourceGenMappingsAllResources: Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
 
-        inspector = NewWithTypesAllResources();
-        Console.WriteLine($"NewWithTypesAllResources:      Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
+        //inspector = NewWithTypesAllResources();
+        //Console.WriteLine($"NewWithTypesAllResources:      Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
 
         inspector = ImportType4Resources();
         Console.WriteLine($"ImportType4Resources:          Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
@@ -52,8 +52,8 @@ public partial class ModelInspectorBenchmarks
         inspector = SourceGenMappings4Resources();
         Console.WriteLine($"SourceGenMappings4Resources:   Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
 
-        inspector = NewWithTypes4Resources();
-        Console.WriteLine($"NewWithTypes4Resources:        Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
+        //inspector = NewWithTypes4Resources();
+        //Console.WriteLine($"NewWithTypes4Resources:        Types: {inspector.ClassMappings.Count}, Enums: {inspector.EnumMappings.Count()}");
     }
 
     internal static readonly Type[] PopularResources = new Type[]
@@ -104,16 +104,16 @@ public partial class ModelInspectorBenchmarks
     public ModelInspector SourceGenMappingsAllResources()
     {
         ResetCache();
-        return new ModelInspector(ModelInfo.Version, ClassMappingsAllResources(), EnumMappingsAllResources());
+        return ModelInspector.ForPredefinedMappings(ModelInfo.Version, ClassMappingsAllResources(), EnumMappingsAllResources());
     }
 
-    [Benchmark]
-    public ModelInspector NewWithTypesAllResources()
-    {
-        FhirReleaseParser.Parse(ModelInfo.Version);
-        ResetCache();
-        return ModelInspector.ForTypes(ModelInfo.Version, TypesAllResources());
-    }
+    //[Benchmark]
+    //public ModelInspector NewWithTypesAllResources()
+    //{
+    //    FhirReleaseParser.Parse(ModelInfo.Version);
+    //    ResetCache();
+    //    return ModelInspector.ForTypes(ModelInfo.Version, TypesAllResources());
+    //}
 
     [Benchmark]
     public ModelInspector ImportType4Resources()
@@ -132,16 +132,16 @@ public partial class ModelInspectorBenchmarks
     public ModelInspector SourceGenMappings4Resources()
     {
         ResetCache();
-        return new ModelInspector(ModelInfo.Version, ClassMappings4Resources(), EnumMappings4Resources());
+        return ModelInspector.ForPredefinedMappings(ModelInfo.Version, ClassMappings4Resources(), EnumMappings4Resources());
     }
 
-    [Benchmark]
-    public ModelInspector NewWithTypes4Resources()
-    {
-        ResetCache();
-        var inspector = ModelInspector.ForTypes(ModelInfo.Version, Types4Resources());
-        return inspector;
-    }
+    //[Benchmark]
+    //public ModelInspector NewWithTypes4Resources()
+    //{
+    //    ResetCache();
+    //    var inspector = ModelInspector.ForTypes(ModelInfo.Version, Types4Resources());
+    //    return inspector;
+    //}
 
     //[Benchmark]
     //public void GetPropertiesAll()

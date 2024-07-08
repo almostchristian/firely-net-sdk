@@ -90,8 +90,11 @@ namespace Hl7.Fhir.Introspection
 
             var backboneAttribute = GetAttribute<BackboneTypeAttribute>(type, release);
 
-            result = new ClassMapping(collectTypeName(typeAttribute, type), type, release)
+            result = new ClassMapping()
             {
+                Name = collectTypeName(typeAttribute, type),
+                NativeType = type,
+                Release = release,
                 IsResource = typeAttribute.IsResource || type.CanBeTreatedAsType(typeof(Resource)),
                 IsCodeOfT = ReflectionHelper.IsClosedGenericType(type) &&
                                 ReflectionHelper.IsConstructedFromGenericTypeDefinition(type, typeof(Code<>)),
@@ -106,50 +109,18 @@ namespace Hl7.Fhir.Introspection
             return true;
         }
 
-        public static ClassMapping Build(
-            string name,
-            Type nativeType,
-            FhirRelease release,
-            bool isResource = false,
-            bool isCodeOfT = false,
-            bool isFhirPrimitive = false,
-            bool isPrimitive = false,
-            bool isBackboneType = false,
-            string? definitionPath = null,
-            bool isBindable = false,
-            string? canonical = null,
-            ValidationAttribute[]? validationAttributes = null,
-            Func<ClassMapping, PropertyMapping[]>? propertyMapFactory = null)
+        public ClassMapping()
+            : this(inspectProperties)
         {
-            Func<ClassMapping, PropertyMappingCollection>? propMappingFactory = null;
-            if (propertyMapFactory != null)
-            {
-                propMappingFactory = cm => new PropertyMappingCollection(propertyMapFactory(cm));
-            }
-
-            var mapping = new ClassMapping(name, nativeType, release, propMappingFactory)
-            {
-                IsResource = isResource,
-                IsCodeOfT = isCodeOfT,
-                IsFhirPrimitive = isFhirPrimitive,
-                IsPrimitive = isPrimitive,
-                IsBackboneType = isBackboneType,
-                DefinitionPath = definitionPath,
-                IsBindable = isBindable,
-                Canonical = canonical,
-                ValidationAttributes = validationAttributes ?? [],
-            };
-
-            _mappedClasses.GetOrAdd((nativeType, release), mapping);
-
-            return mapping;
         }
 
-        private ClassMapping(string name, Type nativeType, FhirRelease release, Func<ClassMapping, PropertyMappingCollection>? propertyMappingFactory = null)
+        public ClassMapping(Func<ClassMapping, PropertyMapping[]> propertyMapFactory)
+            : this(cm => new PropertyMappingCollection(propertyMapFactory(cm)))
         {
-            Name = name;
-            NativeType = nativeType;
-            Release = release;
+        }
+
+        private ClassMapping(Func<ClassMapping, PropertyMappingCollection>? propertyMappingFactory)
+        {
             _propertyMappingFactory = propertyMappingFactory ?? inspectProperties;
         }
 
@@ -158,7 +129,7 @@ namespace Hl7.Fhir.Introspection
         /// </summary>
         /// <remarks>The mapping will contain the metadata that applies to this version (or older), using the
         /// newest metadata when multiple exist.</remarks>
-        public FhirRelease Release { get; }
+        public FhirRelease Release { get; init; }
 
         /// <summary>
         /// Name of the mapping.
@@ -173,63 +144,63 @@ namespace Hl7.Fhir.Introspection
         /// <item>.NET primitive types have their <see cref="Type.FullName"/> name prepended with "Net.", e.g. "Net.System.Int32".</item>
         /// </list>
         /// </remarks>
-        public string Name { get; private set; }
+        public required string Name { get; init; }
 
         /// <summary>
         /// The .NET class that implements the FHIR datatype/resource
         /// </summary>
-        public Type NativeType { get; private set; }
+        public required Type NativeType { get; init; }
 
         /// <summary>
         /// Is <c>true</c> when this class represents a Resource datatype.
         /// </summary>
-        public bool IsResource { get; private set; } = false;
+        public bool IsResource { get; init; } = false;
 
         /// <summary>
         /// Is <c>true</c> when this class represents a FHIR primitive
         /// </summary>
         /// <remarks>This is different from a .NET primitive, as FHIR primitives are complex types with a primitive value.</remarks>
-        public bool IsFhirPrimitive { get; private set; } = false;
+        public bool IsFhirPrimitive { get; init; } = false;
 
         /// <summary>
         /// The element is of an atomic .NET type, not a FHIR generated POCO.
         /// </summary>
-        public bool IsPrimitive { get; private set; } = false;
+        public bool IsPrimitive { get; init; } = false;
 
         /// <summary>
         /// Is <c>true</c> when this class represents a code with a required binding.
         /// </summary>
         /// <remarks>See <see cref="Name"></see>.</remarks>
-        public bool IsCodeOfT { get; private set; } = false;
+        public bool IsCodeOfT { get; init; } = false;
 
         /// <summary>
         /// Indicates whether this class represents the nested complex type for a backbone element.
         /// </summary>
         [Obsolete("These types are now generally called Backbone types, so use IsBackboneType instead.")]
-        public bool IsNestedType { get => IsBackboneType; set => IsBackboneType = value; }
+        public bool IsNestedType { get => IsBackboneType; init => IsBackboneType = value; }
 
         /// <summary>
         /// Indicates whether this class represents the nested complex type for a backbone element.
         /// </summary>
-        public bool IsBackboneType { get; private set; } = false;
+        public bool IsBackboneType { get; init; } = false;
 
 
         /// <summary>
         /// If this is a backbone type (<see cref="IsBackboneType"/>), then this contains the path
         /// in the StructureDefinition where the backbone was defined first.
         /// </summary>
-        public string? DefinitionPath { get; private set; }
+        public string? DefinitionPath { get; init; }
 
         /// <summary>
         /// Indicates whether this class can be used for binding.
         /// </summary>
-        public bool IsBindable { get; private set; }
+        public bool IsBindable { get; init; }
 
         /// <summary>
         /// The canonical for the StructureDefinition defining this type
         /// </summary>
         /// <remarks>Will be null for backbone types.</remarks>
-        public string? Canonical { get; private set; }
+        public string? Canonical { get; init; }
 
         // This list is created lazily. This not only improves initial startup time of 
         // applications but also ensures circular references between types will not cause loops.
@@ -254,7 +225,7 @@ namespace Hl7.Fhir.Introspection
         /// The collection of zero or more <see cref="ValidationAttribute"/> (or subclasses) declared
         /// on this class.
         /// </summary>
-        public ValidationAttribute[] ValidationAttributes { get; private set; } = Array.Empty<ValidationAttribute>();
+        public ValidationAttribute[] ValidationAttributes { get; init; } = Array.Empty<ValidationAttribute>();
 
         /// <summary>
         /// Holds a reference to a property that represents the value of a FHIR Primitive. This
@@ -406,10 +377,21 @@ namespace Hl7.Fhir.Introspection
         };
 
         private static ClassMapping buildCqlClassMapping(Type t, FhirRelease release) =>
-            new("System." + t.Name, t, release);
+            new()
+            {
+                Name = "System." + t.Name,
+                NativeType = t,
+                Release = release
+            };
 
         private static ClassMapping buildNetPrimitiveClassMapping(Type t, FhirRelease release) =>
-            new("Net." + t.FullName, t, release) { IsPrimitive = true };
+            new()
+            {
+                Name = "Net." + t.FullName,
+                NativeType = t,
+                Release = release,
+                IsPrimitive = true
+            };
     }
 }
 
