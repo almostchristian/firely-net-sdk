@@ -456,7 +456,16 @@ internal static class Helpers
         var name = data.ConstructorArguments[0].Value?.ToString();
         var valueset = data.ConstructorArguments[1].Value?.ToString();
         var system = data.ConstructorArguments.ElementAtOrDefault(2).Value?.ToString();
-        code.AppendLine($"        Hl7.Fhir.Introspection.EnumMapping.Build({name.SurroundWithQuotesOrNull()}, {valueset.SurroundWithQuotesOrNull()}, typeof({enumType.ToDisplayString()}), FhirRelease, {system.SurroundWithQuotesOrNull()}),");
+        code.AppendLine(
+            $$"""
+                    new Hl7.Fhir.Introspection.EnumMapping({{system.SurroundWithQuotesOrNull()}})
+                    {
+                       Name = {{name.SurroundWithQuotesOrNull()}},
+                       Canonical = {{valueset.SurroundWithQuotesOrNull()}},
+                       NativeType = typeof({{enumType.ToDisplayString()}}),
+                       Release = FhirRelease,
+                    },
+             """);
     }
 
     public static FhirRelease? ReadSinceProperty(this AttributeData? data)

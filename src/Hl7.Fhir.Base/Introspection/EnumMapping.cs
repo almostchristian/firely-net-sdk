@@ -56,20 +56,24 @@ namespace Hl7.Fhir.Introspection
 
             if (ClassMapping.GetAttribute<FhirEnumerationAttribute>(type.GetTypeInfo(), release) is not { } typeAttribute) return false;
 
-            result = new EnumMapping(typeAttribute.BindingName, typeAttribute.Valueset, type, release, (typeAttribute.DefaultCodeSystem is not null) ? string.Intern(typeAttribute.DefaultCodeSystem) : null);
+            result = new EnumMapping(typeAttribute.DefaultCodeSystem)
+            {
+                Name = typeAttribute.BindingName,
+                Canonical = typeAttribute.Valueset,
+                NativeType = type,
+                Release = release,
+            };
             return true;
         }
 
-        public static EnumMapping Build(string name, string? canonical, Type nativeType, FhirRelease release, string? defaultCodeSystem = null)
-            => new EnumMapping(name, canonical, nativeType, release, defaultCodeSystem);
-
-        internal EnumMapping(string name, string? canonical, Type nativeType, FhirRelease release, string? defaultCodeSystem)
+        public EnumMapping(string? defaultCodeSystem)
         {
-            Name = name;
-            Canonical = canonical;
-            NativeType = nativeType;
-            Release = release;
-            _mappings = new(valueFactory: () => mappingInitializer(defaultCodeSystem));
+            _mappings = new(() => mappingInitializer(defaultCodeSystem));
+        }
+
+        public EnumMapping(Func<IReadOnlyDictionary<string, EnumMemberMapping>> memberMappingFactory)
+        {
+            _mappings = new(valueFactory: memberMappingFactory);
         }
 
         /// <summary>
@@ -77,7 +81,7 @@ namespace Hl7.Fhir.Introspection
         /// </summary>
         /// <remarks>The mapping will contain the metadata that applies to this version (or older), using the
         /// newest metadata when multiple exist.</remarks>
-        public FhirRelease? Release { get; }
+        public required FhirRelease? Release { get; init; }
 
         /// <summary>
         /// Name of the mapping, derived from the valueset's name or id.
@@ -85,12 +89,12 @@ namespace Hl7.Fhir.Introspection
         /// <remarks>
         /// This is the FHIR name 
         /// </remarks>
-        public string Name { get; private set; }
+        public required string Name { get; init; }
 
         /// <summary>
         /// The canonical of the ValueSet where this enum was derived from.
         /// </summary>
-        public string? Canonical { get; }
+        public string? Canonical { get; init; }
 
         /// <summary>
         /// The code system of most of the member of the ValueSet
@@ -99,7 +103,7 @@ namespace Hl7.Fhir.Introspection
         /// <summary>
         /// The .NET class that implements the FHIR datatype/resource
         /// </summary>
-        public Type NativeType { get; private set; }
+        public required Type NativeType { get; init; }
 
         /// <summary>
         /// The list of enum members.
@@ -109,7 +113,6 @@ namespace Hl7.Fhir.Introspection
         private readonly Lazy<IReadOnlyDictionary<string, EnumMemberMapping>> _mappings;
 
         public string CqlTypeSpecifier => "{http://hl7.org/fhir}" + Name;
-
 
         private IReadOnlyDictionary<string, EnumMemberMapping> mappingInitializer(string? defaultCS)
         {

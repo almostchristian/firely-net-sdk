@@ -109,19 +109,14 @@ namespace Hl7.Fhir.Introspection
             return true;
         }
 
-        public ClassMapping()
-            : this(inspectProperties)
+        public ClassMapping(Func<ClassMapping, PropertyMapping[]>? propertyMapFactory = null)
+            : this(propertyMapFactory != null ? cm => new PropertyMappingCollection(propertyMapFactory(cm)) : inspectProperties)
         {
         }
 
-        public ClassMapping(Func<ClassMapping, PropertyMapping[]> propertyMapFactory)
-            : this(cm => new PropertyMappingCollection(propertyMapFactory(cm)))
+        private ClassMapping(Func<ClassMapping, PropertyMappingCollection> propertyMappingFactory)
         {
-        }
-
-        private ClassMapping(Func<ClassMapping, PropertyMappingCollection>? propertyMappingFactory)
-        {
-            _propertyMappingFactory = propertyMappingFactory ?? inspectProperties;
+            _propertyMappingFactory = propertyMappingFactory;
         }
 
         /// <summary>
