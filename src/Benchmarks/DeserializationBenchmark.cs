@@ -18,6 +18,7 @@ namespace Firely.Sdk.Benchmarks
         internal BaseFhirJsonPocoDeserializer JsonDeserializer;
         internal XmlReader xmlreader;
         internal JsonSerializerOptions options;
+        internal ModelInspector modelInspector;
 
         [Params(false, true)]
         public bool UseSourceGen { get; set; }
@@ -30,8 +31,6 @@ namespace Firely.Sdk.Benchmarks
 
             var xmlFileName = Path.Combine("TestData", "fp-test-patient.xml");
             XmlData = File.ReadAllText(xmlFileName);
-
-            ModelInspector modelInspector;
 
             if (UseSourceGen)
             {
@@ -80,13 +79,13 @@ namespace Firely.Sdk.Benchmarks
         [Benchmark]
         public Patient TypedElementDeserializerJson()
         {
-            return FhirJsonNode.Parse(JsonData).ToPoco<Patient>();
+            return FhirJsonNode.Parse(JsonData).ToPoco<Patient>(modelInspector);
         }
 
         [Benchmark]
         public Resource TypedElementDeserializerXml()
         {
-            return FhirXmlNode.Parse(XmlData).ToPoco<Patient>();
+            return FhirXmlNode.Parse(XmlData).ToPoco<Patient>(modelInspector);
         }
     }
 }

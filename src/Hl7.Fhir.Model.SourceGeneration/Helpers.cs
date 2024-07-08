@@ -3,7 +3,6 @@ using Microsoft.CodeAnalysis.CSharp;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -32,7 +31,7 @@ internal static class Helpers
         }
         else
         {
-            return $"\"{value}\"";
+            return $"\"{value.Replace("\"", "\\\"")}\"";
         }
     }
 
@@ -192,12 +191,12 @@ internal static class Helpers
                 $$"""
                          new Hl7.Fhir.Introspection.ClassMapping
                          {
-                            Name = "Net.{{arrayType.ElementType.Name}}[]",
-                            NativeType = typeof({{netType.ToDisplayString()}}),
-                            Release = FhirRelease,
-                            IsPrimitive = true,
+                             Name = "Net.{{arrayType.ElementType.Name}}[]",
+                             NativeType = typeof({{netType.ToDisplayString()}}),
+                             Release = FhirRelease,
+                             IsPrimitive = true,
                          },
-                """);
+                 """);
         }
         else
         {
@@ -205,12 +204,12 @@ internal static class Helpers
                 $$"""
                          new Hl7.Fhir.Introspection.ClassMapping
                          {
-                            Name = "Net.{{netType.Name}}",
-                            NativeType = typeof({{netType.ToDisplayString()}}),
-                            Release = FhirRelease,
-                            IsPrimitive = true,
+                             Name = "Net.{{netType.Name}}",
+                             NativeType = typeof({{netType.ToDisplayString()}}),
+                             Release = FhirRelease,
+                             IsPrimitive = true,
                          },
-                """);
+                 """);
         }
     }
 
@@ -220,11 +219,11 @@ internal static class Helpers
             $$"""
                      new Hl7.Fhir.Introspection.ClassMapping
                      {
-                        Name = "System.{{cqlType.Name}}",
-                        NativeType = typeof({{cqlType.ToDisplayString()}}),
-                        Release = FhirRelease,
+                         Name = "System.{{cqlType.Name}}",
+                         NativeType = typeof({{cqlType.ToDisplayString()}}),
+                         Release = FhirRelease,
                      },
-            """);
+             """);
     }
 
     public static void WriteFhirType(this ITypeSymbol fhirType, StringBuilder code, AttributeData data, IReadOnlyDictionary<ISymbol?, int> classIndex, FhirRelease fhirRelease)
@@ -248,10 +247,10 @@ internal static class Helpers
         var isBindable = fhirType.TryGetAttribute("Hl7.Fhir.Introspection.BindableAttribute", out var bindableAttribute);
         code.Append(
             $$"""
-                  new Hl7.Fhir.Introspection.ClassMapping(cm =>
-                  [
+                     new Hl7.Fhir.Introspection.ClassMapping(cm =>
+                     [
 
-            """);
+             """);
 
         var properties = GetProps(fhirType).ToList();
 
@@ -364,33 +363,33 @@ internal static class Helpers
 
                 var isPrimitive = property.Type.IsAllowedNativeTypeForDataTypeValue();
 
-                code.AppendLine($"                //CreateProp(cm, cm.NativeType.GetProperty({property.Name.SurroundWithQuotesOrNull()})),");
+                code.AppendLine($"            //CreateProp(cm, cm.NativeType.GetProperty({property.Name.SurroundWithQuotesOrNull()})),");
                 code.AppendLine(
                     $$"""
-                                    new Hl7.Fhir.Introspection.PropertyMapping(
-                                       getter: static i => System.Runtime.CompilerServices.Unsafe.As<{{fhirType.ToDisplayString()}}>(i).{{property.Name}},
-                                       setter: static (i, v) => System.Runtime.CompilerServices.Unsafe.As<{{fhirType.ToDisplayString()}}>(i).{{property.Name}} = {{GetCastedSetterValue()}})
-                                    {
-                                       Name = {{propName.SurroundWithQuotesOrNull()}},
-                                       DeclaringClass = cm, // ClassMapping for T,
-                                       ImplementingType = typeof({{implementingType.ToDisplayString(NullableFlowState.None)}}),
-                                       PropertyTypeMapping = GeneratedModelInspectorContainer.AllClassMappings{{ModelInspectorGenerator.arrayAccess}}[{{propertyClassMappingIdx}}], // ClassMapping for {{propertyType.ToDisplayString()}}
-                                       FhirType = [{{fhirTypes}}],
-                                       Release = FhirRelease,
-                                       InSummary = {{inSummary}},
-                                       IsModifier = {{isModifier}},
-                                       Choice = {{choice}},
-                                       SerializationHint = {{xmlRep}},
-                                       Order = {{order}},
-                                       IsCollection = {{isCollection.ToString().ToLower()}},
-                                       IsMandatoryElement = {{isMandatory.ToString().ToLower()}},
-                                       IsPrimitive = {{isPrimitive.ToString().ToLower()}},
-                                       RepresentsValueElement = {{(isPrimitive && elementData.IsPrimitiveValueElement()).ToString().ToLower()}},
-                                       ValidationAttributes = [{{string.Join(", ", validationAttribs)}}],
-                                       FiveWs = {{fiveWs.SurroundWithQuotesOrNull()}},
-                                       BindingName = {{bindingName.SurroundWithQuotesOrNull()}},
-                                    },
-                    """);
+                                 new Hl7.Fhir.Introspection.PropertyMapping(
+                                     getter: static i => System.Runtime.CompilerServices.Unsafe.As<{{fhirType.ToDisplayString()}}>(i).{{property.Name}},
+                                     setter: static (i, v) => System.Runtime.CompilerServices.Unsafe.As<{{fhirType.ToDisplayString()}}>(i).{{property.Name}} = {{GetCastedSetterValue()}})
+                                 {
+                                     Name = {{propName.SurroundWithQuotesOrNull()}},
+                                     DeclaringClass = cm, // ClassMapping for T,
+                                     ImplementingType = typeof({{implementingType.ToDisplayString(NullableFlowState.None)}}),
+                                     PropertyTypeMapping = GeneratedModelInspectorContainer.AllClassMappings{{ModelInspectorGenerator.arrayAccess}}[{{propertyClassMappingIdx}}], // ClassMapping for {{propertyType.ToDisplayString()}}
+                                     FhirType = [{{fhirTypes}}],
+                                     Release = FhirRelease,
+                                     InSummary = {{inSummary}},
+                                     IsModifier = {{isModifier}},
+                                     Choice = {{choice}},
+                                     SerializationHint = {{xmlRep}},
+                                     Order = {{order}},
+                                     IsCollection = {{isCollection.ToString().ToLower()}},
+                                     IsMandatoryElement = {{isMandatory.ToString().ToLower()}},
+                                     IsPrimitive = {{isPrimitive.ToString().ToLower()}},
+                                     RepresentsValueElement = {{(isPrimitive && elementData.IsPrimitiveValueElement()).ToString().ToLower()}},
+                                     ValidationAttributes = [{{string.Join(", ", validationAttribs)}}],
+                                     FiveWs = {{fiveWs.SurroundWithQuotesOrNull()}},
+                                     BindingName = {{bindingName.SurroundWithQuotesOrNull()}},
+                                 },
+                     """);
 
                 string GetCastedSetterValue() => property.Type.IsValueType ?
                     $"System.Runtime.CompilerServices.Unsafe.Unbox<{property.Type.GetNonNullableSymbol().ToDisplayString()}>(v)" :
@@ -400,21 +399,21 @@ internal static class Helpers
 
         code.Append(
             $$"""
-                  ])
-                  {
-                     Name = {{name.SurroundWithQuotesOrNull()}},
-                     NativeType = typeof({{fhirType.ToDisplayString()}}),
-                     Release = FhirRelease,
-                     IsResource = {{(isResource ?? "false")}},
-                     IsCodeOfT = {{isCodeOfT.ToString().ToLower()}},
-                     IsFhirPrimitive = {{isFhirPrimitive.ToString().ToLower()}},
-                     IsBackboneType = {{isBackbone.ToString().ToLower()}},
-                     DefinitionPath = {{definitionPath.SurroundWithQuotesOrNull()}},
-                     IsBindable = {{isBindable.ToString().ToLower()}},
-                     Canonical = {{canonical.SurroundWithQuotesOrNull()}},
-                     ValidationAttributes = {{(hasValidationAttributes ? $"GetValidationAttributes(typeof({fhirType.ToDisplayString()}), FhirRelease).ToArray(), // this can be optimized further" : "[], // it appears this is always empty")}}
-                  },
-            """);
+                     ])
+                     {
+                         Name = {{name.SurroundWithQuotesOrNull()}},
+                         NativeType = typeof({{fhirType.ToDisplayString()}}),
+                         Release = FhirRelease,
+                         IsResource = {{(isResource ?? "false")}},
+                         IsCodeOfT = {{isCodeOfT.ToString().ToLower()}},
+                         IsFhirPrimitive = {{isFhirPrimitive.ToString().ToLower()}},
+                         IsBackboneType = {{isBackbone.ToString().ToLower()}},
+                         DefinitionPath = {{definitionPath.SurroundWithQuotesOrNull()}},
+                         IsBindable = {{isBindable.ToString().ToLower()}},
+                         Canonical = {{canonical.SurroundWithQuotesOrNull()}},
+                         ValidationAttributes = {{(hasValidationAttributes ? $"GetValidationAttributes(typeof({fhirType.ToDisplayString()}), FhirRelease).ToArray(), // this can be optimized further" : "[], // it appears this is always empty")}}
+                     },
+             """);
         code.AppendLine($"");
     }
 
@@ -456,9 +455,36 @@ internal static class Helpers
         var name = data.ConstructorArguments[0].Value?.ToString();
         var valueset = data.ConstructorArguments[1].Value?.ToString();
         var system = data.ConstructorArguments.ElementAtOrDefault(2).Value?.ToString();
+        var fields = enumType.GetMembers()
+            .Select(m =>
+            {
+                if (m.TryGetAttribute("Hl7.Fhir.Utility.EnumLiteralAttribute", out var attrib))
+                {
+                    return new
+                    {
+                        Code = attrib!.ConstructorArguments[0].Value?.ToString(),
+                        System = attrib.ConstructorArguments.ElementAtOrDefault(1).Value?.ToString() ?? valueset,
+                        Value = m.Name,
+                        Description = m.TryGetAttribute("Hl7.Fhir.Utility.DescriptionAttribute", out var descAttrib) ? descAttrib?.ConstructorArguments[0].Value?.ToString() : null,
+                    };
+                }
+                else
+                {
+                    return default;
+                }
+            })
+            .Where(x => x != null)
+            .Select(x =>
+            $$"""
+                       { "{{x.Code}}", new Hl7.Fhir.Introspection.EnumMemberMapping { Code = "{{x.Code}}", System = "{{x.System ?? system}}", Value = {{enumType.ToDisplayString()}}.{{x.Value}}, Description = {{x.Description.SurroundWithQuotesOrNull()}} } },
+            """)
+            .ToList();
         code.AppendLine(
             $$"""
-                    new Hl7.Fhir.Introspection.EnumMapping({{system.SurroundWithQuotesOrNull()}})
+                    new Hl7.Fhir.Introspection.EnumMapping(() => new System.Collections.Generic.Dictionary<string, Hl7.Fhir.Introspection.EnumMemberMapping>
+                    {
+             {{string.Join("\r\n", fields)}}
+                    })
                     {
                        Name = {{name.SurroundWithQuotesOrNull()}},
                        Canonical = {{valueset.SurroundWithQuotesOrNull()}},

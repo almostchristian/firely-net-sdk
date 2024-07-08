@@ -15,7 +15,7 @@ namespace Firely.Sdk.Benchmarks
         internal Patient Patient;
         JsonSerializerOptions Options;
         BaseFhirXmlPocoSerializer XmlSerializer;
-
+        ModelInspector modelInspector;
 
         [Params(false, true)]
         public bool UseSourceGen { get; set; }
@@ -23,8 +23,6 @@ namespace Firely.Sdk.Benchmarks
         [GlobalSetup]
         public void BenchmarkSetup()
         {
-            ModelInspector modelInspector;
-
             if (UseSourceGen)
             {
                 modelInspector = ModelInspector.ForPredefinedMappings(ModelInfo.Version, ModelInspectorBenchmarks.ClassMappingsAllResources(), ModelInspectorBenchmarks.EnumMappingsAllResources());
@@ -55,16 +53,16 @@ namespace Firely.Sdk.Benchmarks
             return SerializationUtil.WriteXmlToString(Patient, (o, w) => XmlSerializer.Serialize(o, w));
         }
 
-        //[Benchmark]
+        [Benchmark]
         public string TypedElementSerializerJson()
         {
-            return Patient.ToTypedElement().ToJson();
+            return Patient.ToTypedElement(modelInspector).ToJson();
         }
 
         [Benchmark]
         public string TypedElementSerializerXml()
         {
-            return Patient.ToTypedElement().ToXml();
+            return Patient.ToTypedElement(modelInspector).ToXml();
         }
     }
 }

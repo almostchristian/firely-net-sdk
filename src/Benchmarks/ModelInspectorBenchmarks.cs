@@ -80,7 +80,7 @@ public partial class ModelInspectorBenchmarks
         EnumMapping.Clear();
     }
 
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     public ModelInspector ScanAssemblies()
     {
         ResetCache();
